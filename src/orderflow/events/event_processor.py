@@ -7,7 +7,13 @@ from src.orderflow.events.event_buffer import EventBuffer
 from src.orderflow.signal.engine import SignalEngine
 
 
+from src.orderflow.signal.state_tracker import SignalStateTracker
+
+
 from src.orderflow.monitor.signal_monitor import SignalMonitor
+
+
+
 
 
 class EventProcessor:
@@ -31,10 +37,12 @@ class EventProcessor:
         self.signal_recorder = signal_recorder
 
 
+
         #
         # Signal Engine
         #
         self.signal_engine = SignalEngine()
+
 
 
         #
@@ -46,6 +54,17 @@ class EventProcessor:
         )
 
 
+
+        #
+        # Phase 10.6.3
+        # Signal State Filter
+        #
+        self.signal_tracker = SignalStateTracker(
+            emit_flat=True
+        )
+
+
+
         #
         # Event buffer
         #
@@ -54,14 +73,10 @@ class EventProcessor:
         )
 
 
+
         self.running = True
 
 
-
-        #
-        # 只打印信号变化
-        #
-        self.last_signal = None
 
 
 
@@ -75,6 +90,7 @@ class EventProcessor:
 
 
         while self.running:
+
 
             try:
 
@@ -93,16 +109,20 @@ class EventProcessor:
 
                 for item in ready_events:
 
+
                     self.process(
                         item
                     )
 
 
+
             except Exception:
+
 
                 print(
                     "EventProcessor error:"
                 )
+
 
                 traceback.print_exc()
 
@@ -132,6 +152,8 @@ class EventProcessor:
 
 
 
+
+
         #
         # depth事件
         #
@@ -145,6 +167,9 @@ class EventProcessor:
                 timestamp
 
             )
+
+
+
 
 
 
@@ -179,9 +204,11 @@ class EventProcessor:
 
 
 
+
         if feature is None:
 
             return
+
 
 
 
@@ -203,8 +230,10 @@ class EventProcessor:
 
 
 
+
+
         #
-        # 生成signal
+        # Raw Signal
         #
         signal = self.signal_engine.generate(
 
@@ -222,15 +251,43 @@ class EventProcessor:
 
 
 
+
         #
-        # Phase 10.6
-        # Signal统计
+        # Phase 10.6.3
+        #
+        # Signal State Filter
+        #
+        filtered_signal = (
+            self.signal_tracker.update(
+                signal
+            )
+        )
+
+
+
+        #
+        # 状态没有变化
+        #
+        if filtered_signal is None:
+
+            return
+
+
+
+
+
+
+
+        #
+        # Signal Monitor
         #
         self.signal_monitor.update(
 
-            signal
+            filtered_signal
 
         )
+
+
 
 
 
@@ -244,7 +301,7 @@ class EventProcessor:
 
             self.signal_recorder.write(
 
-                signal,
+                filtered_signal,
 
                 feature
 
@@ -257,57 +314,48 @@ class EventProcessor:
 
 
         #
-        # 只打印signal变化
+        # 输出变化后的signal
         #
-        current_signal = signal.side.value
+        print(
+
+            {
+
+                "signal":
+
+                    filtered_signal.side.value,
 
 
+                "strength":
 
-        if current_signal != self.last_signal:
+                    round(
 
+                        filtered_signal.strength,
 
-            print(
+                        3
 
-                {
-
-                    "signal":
-
-                        current_signal,
+                    ),
 
 
-                    "strength":
+                "reason":
 
-                        round(
-
-                            signal.strength,
-
-                            3
-
-                        ),
+                    filtered_signal.reason,
 
 
-                    "reason":
+                "mid":
 
-                        signal.reason,
-
-
-                    "mid":
-
-                        feature.get(
-                            "mid"
-                        ),
+                    feature.get(
+                        "mid"
+                    ),
 
 
-                    "timestamp":
+                "timestamp":
 
-                        timestamp
+                    timestamp
 
-                }
+            }
 
-            )
+        )
 
-
-            self.last_signal = current_signal
 
 
 
