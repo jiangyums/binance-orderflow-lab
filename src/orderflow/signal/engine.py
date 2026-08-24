@@ -125,6 +125,16 @@ class SignalEngine:
 
 
         #
+        # 报告用强度：两分量强度之和（范围 0~2），可超过 1.0，
+        # 使 1-2 / >2 强度桶有意义；与加权 score（仅用于阈值判断）解耦
+        #
+        strength = (
+            obi_signal.strength
+            +
+            ofi_signal.strength
+        )
+
+        #
         # LONG
         #
         if score > self.threshold:
@@ -139,7 +149,7 @@ class SignalEngine:
                 SignalSide.LONG,
 
 
-                score,
+                strength,
 
 
                 "OBI+OFI"
@@ -167,7 +177,7 @@ class SignalEngine:
                 SignalSide.SHORT,
 
 
-                abs(score),
+                strength,
 
 
                 "OBI+OFI"
@@ -193,7 +203,7 @@ class SignalEngine:
             SignalSide.FLAT,
 
 
-            abs(score),
+            strength,
 
 
             "Weak"

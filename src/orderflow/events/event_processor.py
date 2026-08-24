@@ -11,6 +11,7 @@ from src.orderflow.signal.state_tracker import SignalStateTracker
 
 
 from src.orderflow.monitor.signal_monitor import SignalMonitor
+from src.orderflow.evaluator.signal_evaluator import SignalEvaluator
 
 
 
@@ -53,6 +54,7 @@ class EventProcessor:
             interval=60
         )
 
+        self.evaluator = SignalEvaluator()
 
 
         #
@@ -215,6 +217,14 @@ class EventProcessor:
 
 
         #
+        # Signal Evaluator: 持续喂入最新价格
+        self.evaluator.update_price(
+            feature["timestamp"],
+            feature["mid"]
+        )
+
+
+        #
         # Feature Recorder
         #
         if self.recorder:
@@ -282,15 +292,16 @@ class EventProcessor:
         # Signal Monitor
         #
         self.signal_monitor.update(
-
             filtered_signal
-
         )
 
 
-
-
-
+        #
+        # Signal Evaluator: 记录信号用于收益评估
+        self.evaluator.add_signal(
+            filtered_signal,
+            feature
+        )
 
 
         #
@@ -365,3 +376,7 @@ class EventProcessor:
     def stop(self):
 
         self.running = False
+
+        if hasattr(self, "evaluator"):
+
+            self.evaluator.close()
