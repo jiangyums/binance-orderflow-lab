@@ -1,0 +1,134 @@
+binance-orderflow-lab 本次 Session 记录（摘要）
+
+主题： - Binance Futures BTCUSDT Order Flow Lab 开发 - L2 Order Book
+构建 - OBI / MicroPrice / OFI / CVD - OrderFlowEngine 架构
+
+主要进展：
+
+1.  Binance L2 Order Book
+
+-   使用 Binance Futures depth websocket:
+    wss://fstream.binance.com/ws/btcusdt@depth@100ms
+-   使用 REST snapshot: https://fapi.binance.com/fapi/v1/depth
+-   完成 snapshot + depthUpdate 同步逻辑。
+-   处理 updateId 连续性检查。
+
+2.  数据结构输出示例：
+
+{ ‘mid’:76971.25, ‘microprice’:76971.2203, ‘spread’:0.10,
+‘obi1’:-0.5946, ‘obi5’:-0.5756, ‘obi10’:-0.5788, ‘ofi’:-2.429,
+‘trade_side’:‘SELL’, ‘trade_price’:76971.2, ‘trade_qty’:0.081,
+‘cvd’:-6.781 }
+
+3.  指标解释：
+
+mid: - 买一和卖一的中间价格。
+
+spread: - 最优买卖价差。
+
+microprice: - 根据盘口数量加权后的公平价格。 - microprice > mid
+表示买方流动性偏强。 - microprice < mid 表示卖方流动性偏强。
+
+OBI: - Order Book Imbalance。 - 范围 -1 到 +1。 -
+正值表示买方挂单优势。 - 负值表示卖方挂单优势。
+
+OFI: - Order Flow Imbalance。 - 关注盘口变化，而不是静态盘口。 -
+正值表示买方流动性增强。 - 负值表示卖方流动性增强。
+
+CVD: - Cumulative Volume Delta。 - 主动买成交量减主动卖成交量。 -
+正值表示主动买压力。 - 负值表示主动卖压力。
+
+4.  当前代码结构：
+
+src/orderflow
+
+-   book/
+    -   order_book.py
+    -   binance_snapshot.py
+-   collector/
+    -   binance_depth.py
+    -   binance_trade.py
+    -   orderflow_engine.py
+-   features/
+    -   imbalance.py
+    -   microprice.py
+    -   ofi.py
+    -   cvd.py
+-   engine.py
+
+5.  当前观察：
+
+盘口从：
+
+OBI约 -0.58 microprice < mid CVD约 -6.7
+
+转变为：
+
+OFI突然 +17 OBI转正 microprice > mid
+
+说明盘口发生明显买方流动性变化。
+
+下一阶段：
+
+Phase 9: Feature -> Alpha 验证
+
+目标： - 保存实时feature数据 - 计算未来100ms/500ms/1s收益 - 分析：
+OFI、OBI、MicroPrice、CVD 对未来价格变化的预测能力。
+
+
+============================================================
+
+本次 Session（代码审查 + 修复记录）
+
+主题： 修复 binance-orderflow-lab 实时管道（main.py 入口）的运行问题。
+
+当前运行入口：
+- python -m src.orderflow.collector.main
+- 数据流：binance_depth / binance_trade (websocket) ->
+  asyncio.Queue -> EventProcessor(EventBuffer 按时间戳排序, 延迟100ms) ->
+  OrderFlowEngine -> FeatureRecorder(写入 data/features.csv)
+- 注意：recorder 存在时 feature 只写 CSV、不打印控制台（属正常）。
+
+发现并修复的 Bug：
+
+1. binance_depth.py — 同一个 WebSocket 被两个协程同时 recv
+   - 原代码后台 receiver() 任务永久 ws.recv() 写 buffer，主循环又 ws.recv()
+     -> 消息被随机分流，pu 连续性检查必失败、反复重连。
+   - 修复：改为单消费者（快照期间内联缓存，之后回放缓冲、再进实时循环）。
+
+2. binance_depth.py — 快照后缓冲事件永久丢失
+   - 同步到第一个事件 break 后，主循环直接读 ws，buffer 不再被消费。
+   - 修复：同步后 while buffered_events 回放剩余增量。
+
+3. binance_depth.py — 同步健壮性
+   - 原只在快照返回瞬间已缓存的事件里找锚点，若全旧则直接失败。
+   - 修复：缓冲耗尽仍没命中时，继续从 ws 读取直到命中
+     U <= lastUpdateId + 1 <= u（futures 规则）。
+
+4. event_processor.py — recorder 接口不匹配
+   - 调用 recorder.write(feature)，但 FeatureRecorder 只有 record()。
+   - 修复：改为 recorder.record(feature)。
+
+5. engine.py — update_trade 返回陈旧 feature
+   - update_trade 更新了 last_trade / CVD，却返回 update_book 时缓存的 feature，
+     导致 trade_side / trade_price / trade_qty 永远为空。
+   - 修复：update_trade 在返回前刷新 self.feature 的 trade 字段与 cvd / timestamp。
+
+6. book/order_book.py — 新增 copy() 方法
+   - depth 事件转发 order_book.copy()（而非活对象），避免被 EventBuffer
+     延迟 100ms 期间被后续更新覆盖导致特征算错。
+
+7. main.py — 组件异常不可观测
+   - 原 asyncio.gather(...) 任一组件挂掉整程序静默退出。
+   - 修复：asyncio.wait(FIRST_EXCEPTION) + 取消其余任务 + 显式抛出第一个异常。
+
+验证：
+- 全部模块 py_compile + import OK。
+- 离线冒烟测试：EventProcessor -> OrderFlowEngine -> FeatureRecorder
+  正常产出 mid / microprice / spread / obi / ofi / trade 字段 / cvd。
+- 同步健壮性单测：构造 lastUpdateId 远大于全部缓冲事件的场景，
+  确认旧事件被跳过、靠继续读实时流命中锚点（u=1010）。
+
+运行环境注意：
+- Binance 需走代理（HTTPS_PROXY）；否则 ws / REST 超时。
+- recorder 写入 data/features.csv（自动建目录），不打印控制台。
