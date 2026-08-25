@@ -42,7 +42,7 @@ class EventProcessor:
         #
         # Signal Engine
         #
-        self.signal_engine = SignalEngine()
+        self.signal_engine = SignalEngine(threshold=0.5)
 
 
 

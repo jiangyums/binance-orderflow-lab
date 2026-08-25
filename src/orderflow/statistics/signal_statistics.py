@@ -175,14 +175,34 @@ class SignalStatistics:
                 bucket = "0-0.5"
 
 
-            elif s < 1:
+            elif s < 0.75:
 
-                bucket = "0.5-1"
+                bucket = "0.5-0.75"
 
 
-            elif s < 2:
+            elif s < 1.0:
 
-                bucket = "1-2"
+                bucket = "0.75-1.0"
+
+
+            elif s < 1.25:
+
+                bucket = "1.0-1.25"
+
+
+            elif s < 1.5:
+
+                bucket = "1.25-1.5"
+
+
+            elif s < 1.75:
+
+                bucket = "1.5-1.75"
+
+
+            elif s < 2.0:
+
+                bucket = "1.75-2.0"
 
 
             else:
@@ -255,8 +275,12 @@ class SignalStatistics:
         for bucket in [
 
             "0-0.5",
-            "0.5-1",
-            "1-2",
+            "0.5-0.75",
+            "0.75-1.0",
+            "1.0-1.25",
+            "1.25-1.5",
+            "1.5-1.75",
+            "1.75-2.0",
             ">2"
 
         ]:

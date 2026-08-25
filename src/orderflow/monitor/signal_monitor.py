@@ -183,14 +183,34 @@ class SignalMonitor:
             bucket = "0-0.5"
 
 
-        elif strength < 1:
+        elif strength < 0.75:
 
-            bucket = "0.5-1"
+            bucket = "0.5-0.75"
 
 
-        elif strength < 2:
+        elif strength < 1.0:
 
-            bucket = "1-2"
+            bucket = "0.75-1.0"
+
+
+        elif strength < 1.25:
+
+            bucket = "1.0-1.25"
+
+
+        elif strength < 1.5:
+
+            bucket = "1.25-1.5"
+
+
+        elif strength < 1.75:
+
+            bucket = "1.5-1.75"
+
+
+        elif strength < 2.0:
+
+            bucket = "1.75-2.0"
 
 
         else:
@@ -267,8 +287,12 @@ class SignalMonitor:
 
         for bucket in [
             "0-0.5",
-            "0.5-1",
-            "1-2",
+            "0.5-0.75",
+            "0.75-1.0",
+            "1.0-1.25",
+            "1.25-1.5",
+            "1.5-1.75",
+            "1.75-2.0",
             ">2"
         ]:
 
