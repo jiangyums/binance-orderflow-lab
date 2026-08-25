@@ -41,6 +41,45 @@ python -m tests.test_signal_statistics
 
 读取 `data/evaluation.csv`，打印分信号、分强度档位的胜率与 avg_ret（正=盈利）。
 
+### 3. 阈值扫描（确信度甜点区分析）
+
+```powershell
+# 先录制一批 features.csv（同一会话，保证同口径）
+python -m src.orderflow.collector.main
+# Ctrl+C 停止后，用这一批固定数据扫不同 emit 阈值
+python -m tests.threshold_sweep
+#   可选：--fee 0.0002（maker） / --thresholds 0.4 0.5 0.6 0.7 0.8 0.9
+```
+
+脚本用**同一批** `data/features.csv` 离线回放，依次以不同 emit 阈值跑通
+`SignalEngine` → `SignalStateTracker` → 收益计算（复用生产代码路径，只改变阈值），
+输出每个阈值下的样本数、胜率、毛收益与净收益：
+
+| 列 | 含义 |
+|----|------|
+| `samples` | 该阈值实际发出的 LONG/SHORT 信号数（已去重） |
+| `winX%` / `retX` | X = 1/5/10s 的胜率 / 毛收益（mid-to-mid） |
+| `netX` | 扣成本后的净收益 |
+| `cost` | 平均往返成本（见下） |
+
+**成本模型（关键点）**：`net` 不是拍脑袋的常数，而是从录制数据里**真实的
+`spread` 列**算出来的：
+
+```
+cost_X = 半点差(入场) + 半点差(出场@Xs) + 2 × fee
+半点差   = spread / (2 × mid)
+```
+
+- `spread` / `mid` 取自 `features.csv` 每个信号发生时刻的真实盘口；
+- `fee` 为单边手续费（`--fee`，默认 0.0004 = 0.04% taker；maker 约 0.0002）；
+- 毛收益本身是 mid-to-mid，已偏乐观；这里用真实点差把"无法按中间价成交"
+  的成本补回来，因此 `net` 比固定 0.1% 的猜测可靠得多。
+
+> 实测结论（BTCUSDT，fee=0.04%/side）：胜率随阈值升高而升高，确信度轴有效；
+> 但每笔毛收益仅 ~0.01%–0.02%，而真实往返成本约 **0.08%**（BTC 点差极小，
+> 主要由手续费主导），所以 taker 成本下**所有阈值均净负**。即便压到最低 maker
+> （~0.02% 往返），也只有最高确信度 + 10s 档位勉强转正——盈亏由执行成本主导。
+
 ## 目录结构
 
 ```

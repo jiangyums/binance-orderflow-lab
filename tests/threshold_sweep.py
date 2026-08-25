@@ -9,18 +9,31 @@ from src.orderflow.statistics.signal_statistics import SignalStatistics
 
 
 THRESHOLDS = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-COST = 0.001  # ~0.1% round-trip (fee + spread), for net-PnL view
+DEFAULT_FEE = 0.0004  # per-side fee fraction (~0.04% taker on USD-M futures)
 
 
-def replay_and_evaluate(features_path, threshold, tmp_path):
+def _half_spread(spread, mid):
+    """Half-spread as a fraction of mid (cost to cross one side)."""
+    try:
+        s = float(spread)
+        m = float(mid)
+    except (ValueError, TypeError):
+        return 0.0
+    if s <= 0 or m <= 0:
+        return 0.0
+    return s / (2.0 * m)
+
+
+def replay_and_evaluate(features_path, threshold, tmp_path, fee):
     """Replay a FIXED features.csv through the production pipeline at one emit
     threshold.
 
-    Returns the eval CSV path. The signal set is produced by reusing the exact
-    SignalEngine + SignalStateTracker code; returns are computed by binary
-    search on the price timeline (equivalent to SignalEvaluator's 'first price
-    with diff >= horizon' rule), which is O(N log N) instead of the evaluator's
-    O(pending * prices) per-row cost that is only acceptable in real-time.
+    Returns the eval CSV path and the average round-trip cost fraction per
+    horizon. Signal selection reuses the exact SignalEngine + SignalStateTracker
+    code; returns are computed by binary search on the price timeline
+    (equivalent to SignalEvaluator's 'first price with diff >= horizon' rule).
+    Cost is derived from the REAL recorded spread (half-spread entry + exit +
+    2 x fee), not a flat guess.
     """
 
     eng = SignalEngine(threshold=threshold)
@@ -43,6 +56,7 @@ def replay_and_evaluate(features_path, threshold, tmp_path):
 
     timestamps = [r["timestamp"] for r in rows]
     mids = [r["mid"] for r in rows]
+    spreads = [r.get("spread", 0.0) for r in rows]
 
     # replay engine + tracker to get the exact emitted signal set
     signals = []
@@ -59,10 +73,14 @@ def replay_and_evaluate(features_path, threshold, tmp_path):
                 "signal": filtered.side.value,
                 "strength": filtered.strength,
                 "entry": feat["mid"],
+                "spread": feat.get("spread", 0.0),
             }
         )
 
-    # evaluate each signal against future prices
+    sum_cost = [0.0, 0.0, 0.0]  # 1s, 5s, 10s
+    count = 0
+
+    # evaluate each signal against future prices + real spread cost
     with open(tmp_path, "w", newline="", encoding="utf-8") as out:
         w = csv.DictWriter(
             out,
@@ -80,29 +98,48 @@ def replay_and_evaluate(features_path, threshold, tmp_path):
         for s in signals:
             t0 = s["timestamp"]
             entry = s["entry"]
-            fut = {}
+            half_entry = _half_spread(s["spread"], entry)
+
+            gross = {}
+            costs = {}
+            complete = True
             for horizon, key in (
                 (1000, "return_1s"),
                 (5000, "return_5s"),
                 (10000, "return_10s"),
             ):
                 idx = bisect.bisect_left(timestamps, t0 + horizon)
-                if idx < len(timestamps):
-                    fut[key] = (mids[idx] - entry) / entry
-            if len(fut) == 3:
-                w.writerow(
-                    {
-                        "signal_time": t0,
-                        "signal": s["signal"],
-                        "strength": s["strength"],
-                        "entry_price": entry,
-                        "return_1s": fut["return_1s"],
-                        "return_5s": fut["return_5s"],
-                        "return_10s": fut["return_10s"],
-                    }
-                )
+                if idx >= len(timestamps):
+                    complete = False
+                    break
+                gross[key] = (mids[idx] - entry) / entry
+                half_exit = _half_spread(spreads[idx], mids[idx])
+                costs[key] = half_entry + half_exit + 2.0 * fee
 
-    return tmp_path
+            if not complete:
+                continue
+
+            w.writerow(
+                {
+                    "signal_time": t0,
+                    "signal": s["signal"],
+                    "strength": s["strength"],
+                    "entry_price": entry,
+                    "return_1s": gross["return_1s"],
+                    "return_5s": gross["return_5s"],
+                    "return_10s": gross["return_10s"],
+                }
+            )
+            count += 1
+            for key, ci in (
+                ("return_1s", 0),
+                ("return_5s", 1),
+                ("return_10s", 2),
+            ):
+                sum_cost[ci] += costs[key]
+
+    avg_cost = [c / count for c in sum_cost] if count else [0.0, 0.0, 0.0]
+    return tmp_path, avg_cost
 
 
 def aggregate(eval_path):
@@ -148,10 +185,10 @@ def main():
         default=THRESHOLDS,
     )
     ap.add_argument(
-        "--cost",
+        "--fee",
         type=float,
-        default=COST,
-        help="round-trip cost for net-PnL view (fraction)",
+        default=DEFAULT_FEE,
+        help="per-side fee fraction, e.g. 0.0004 = 0.04%% taker (0.0002 maker)",
     )
     args = ap.parse_args()
 
@@ -161,40 +198,51 @@ def main():
         return
 
     print(
-        "\nThreshold Sweep  (dataset: %s, cost=%.3f%%)\n"
-        % (args.features, args.cost * 100)
+        "\nThreshold Sweep  (dataset: %s, fee=%.3f%%/side)\n"
+        % (args.features, args.fee * 100)
     )
     print(
-        "%-6s %-8s %-8s %-10s %-8s %-10s %-8s %-10s %-12s"
+        "%-5s %-8s %-7s %-9s %-9s %-7s %-9s %-9s %-8s %-10s %-10s %-9s"
         % (
-            "thr", "samples", "win_1s", "avg_ret_1s",
-            "win_5s", "avg_ret_5s", "win_10s", "avg_ret_10s",
-            "net_avg_10s",
+            "thr", "samples", "win1%", "ret1", "net1",
+            "win5%", "ret5", "net5", "win10%", "ret10", "net10", "cost",
         )
     )
-    print("-" * 92)
+    print("-" * 111)
 
     tmp_dir = "data/_sweep_tmp"
     os.makedirs(tmp_dir, exist_ok=True)
 
     for thr in args.thresholds:
         tmp = os.path.join(tmp_dir, "T%s.csv" % thr)
-        replay_and_evaluate(args.features, thr, tmp)
+        tmp, (c1, c5, c10) = replay_and_evaluate(
+            args.features, thr, tmp, args.fee
+        )
         n, (w1, a1), (w5, a5), (w10, a10) = aggregate(tmp)
-        net10 = a10 - args.cost
+        net1 = a1 - c1
+        net5 = a5 - c5
+        net10 = a10 - c10
+        cost_avg = (c1 + c5 + c10) / 3.0
         print(
-            "%-6.1f %-8d %-7.1f%% %-10.5f %-7.1f%% %-10.5f %-7.1f%% %-10.5f %-12.5f"
+            "%-5.1f %-8d %-7.1f%% %-9.5f %-9.5f %-7.1f%% %-9.5f %-9.5f %-8.1f%% %-10.5f %-10.5f %-9.5f"
             % (
                 thr, n,
-                w1 * 100, a1,
-                w5 * 100, a5,
-                w10 * 100, a10,
-                net10,
+                w1 * 100, a1, net1,
+                w5 * 100, a5, net5,
+                w10 * 100, a10, net10,
+                cost_avg,
             )
         )
         os.remove(tmp)
 
-    print("\n(net_avg_10s = avg_ret_10s - cost; >0 means profitable after fees)")
+    print(
+        "\nnet_Xs = avg_ret_Xs - cost_Xs, where cost_Xs = half-spread@entry "
+        "+ half-spread@exit + 2xfee, derived from the recorded spread."
+    )
+    print(
+        "avg round-trip cost ~= %.3f%% (fee=%.3f%% per side)"
+        % (cost_avg * 100, args.fee * 100)
+    )
 
 
 if __name__ == "__main__":
