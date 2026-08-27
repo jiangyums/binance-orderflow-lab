@@ -24,7 +24,7 @@ def _half_spread(spread, mid):
     return s / (2.0 * m)
 
 
-def replay_and_evaluate(features_path, threshold, tmp_path, fee):
+def replay_and_evaluate(features_path, threshold, tmp_path, fee, obi_weight=0.6, ofi_weight=0.4, ofi_scale=10.0, ofi_mode="linear", ofi_rank_fn=None, ofi_top_pct=0.0):
     """Replay a FIXED features.csv through the production pipeline at one emit
     threshold.
 
@@ -36,7 +36,7 @@ def replay_and_evaluate(features_path, threshold, tmp_path, fee):
     2 x fee), not a flat guess.
     """
 
-    eng = SignalEngine(threshold=threshold)
+    eng = SignalEngine(threshold=threshold, obi_weight=obi_weight, ofi_weight=ofi_weight, ofi_scale=ofi_scale, ofi_mode=ofi_mode, ofi_rank_fn=ofi_rank_fn)
     tracker = SignalStateTracker(emit_flat=True)
 
     rows = []
@@ -74,8 +74,14 @@ def replay_and_evaluate(features_path, threshold, tmp_path, fee):
                 "strength": filtered.strength,
                 "entry": feat["mid"],
                 "spread": feat.get("spread", 0.0),
+                "ofi": abs(float(feat.get("ofi", 0.0))),
             }
         )
+
+    if ofi_top_pct > 0 and signals:
+        em = sorted(s["ofi"] for s in signals)
+        cutoff = em[int((100.0 - ofi_top_pct) / 100.0 * (len(em) - 1))]
+        signals = [s for s in signals if s["ofi"] >= cutoff]
 
     sum_cost = [0.0, 0.0, 0.0]  # 1s, 5s, 10s
     count = 0
@@ -169,6 +175,21 @@ def aggregate(eval_path):
     return n, (w1, a1), (w5, a5), (w10, a10)
 
 
+def _build_ofi_rank_fn(path):
+    vals = []
+    with open(path, "r", encoding="utf-8", newline="") as f:
+        for row in csv.DictReader(f):
+            try:
+                vals.append(abs(float(row["ofi"])))
+            except (ValueError, TypeError):
+                pass
+    vals.sort()
+    n = len(vals)
+    if n == 0:
+        return lambda x: 0.0
+    return lambda x: bisect.bisect_right(vals, x) / n
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="Threshold Sweep: replay a fixed features.csv at multiple emit thresholds."
@@ -190,6 +211,17 @@ def main():
         default=DEFAULT_FEE,
         help="per-side fee fraction, e.g. 0.0004 = 0.04%% taker (0.0002 maker)",
     )
+    ap.add_argument("--obi-weight", type=float, default=0.6,
+                    help="OBI weight in SignalEngine (default 0.6)")
+    ap.add_argument("--ofi-weight", type=float, default=0.4,
+                    help="OFI weight in SignalEngine (default 0.4)")
+    ap.add_argument("--ofi-scale", type=float, default=10.0,
+                    help="OFI strength divisor (linear mode): strength=min(|ofi|/scale,1)")
+    ap.add_argument("--ofi-mode", default="linear",
+                    choices=["linear", "rank"],
+                    help="OFI strength mode: linear (scalar) or rank (percentile of |ofi|)")
+    ap.add_argument("--ofi-top-pct", type=float, default=0.0,
+                    help="if >0, only trade signals whose |ofi| is in the top P%% of the session")
     args = ap.parse_args()
 
     if not os.path.exists(args.features):
@@ -213,10 +245,15 @@ def main():
     tmp_dir = "data/_sweep_tmp"
     os.makedirs(tmp_dir, exist_ok=True)
 
+    ofi_rank_fn = None
+    if args.ofi_mode == "rank":
+        ofi_rank_fn = _build_ofi_rank_fn(args.features)
+
     for thr in args.thresholds:
         tmp = os.path.join(tmp_dir, "T%s.csv" % thr)
         tmp, (c1, c5, c10) = replay_and_evaluate(
-            args.features, thr, tmp, args.fee
+            args.features, thr, tmp, args.fee, args.obi_weight, args.ofi_weight,
+            args.ofi_scale, args.ofi_mode, ofi_rank_fn, args.ofi_top_pct,
         )
         n, (w1, a1), (w5, a5), (w10, a10) = aggregate(tmp)
         net1 = a1 - c1

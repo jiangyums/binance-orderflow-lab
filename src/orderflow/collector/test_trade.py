@@ -2,7 +2,6 @@ import asyncio
 import json
 import websockets
 
-
 URL = "wss://fstream.binance.com/ws"
 
 

@@ -18,10 +18,6 @@ class MicroPrice:
         if total_qty == 0:
             return (best_bid + best_ask) / 2
 
-        microprice = (
-            best_ask * bid_qty
-            +
-            best_bid * ask_qty
-        ) / total_qty
+        microprice = (best_ask * bid_qty + best_bid * ask_qty) / total_qty
 
         return microprice

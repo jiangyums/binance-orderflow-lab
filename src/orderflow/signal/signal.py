@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from enum import Enum
 
 
-
 class SignalSide(Enum):
 
     LONG = "LONG"
@@ -10,7 +9,6 @@ class SignalSide(Enum):
     SHORT = "SHORT"
 
     FLAT = "FLAT"
-
 
 
 @dataclass

@@ -2,7 +2,6 @@ import asyncio
 import json
 import websockets
 
-
 URL = "wss://fstream.binance.com/ws"
 SYMBOL = "btcusdt"
 
@@ -40,11 +39,7 @@ async def collect_trade():
             else:
                 side = "BUY"
 
-            print(
-                f"{side:4} "
-                f"price={price:.2f} "
-                f"qty={quantity:.6f}"
-            )
+            print(f"{side:4} " f"price={price:.2f} " f"qty={quantity:.6f}")
 
 
 if __name__ == "__main__":

@@ -11,15 +11,9 @@ class CSVWriter:
 
         exists = os.path.exists(filename)
 
-        self.file = open(
-            filename,
-            "a",
-            newline=""
-        )
+        self.file = open(filename, "a", newline="")
 
-        self.writer = csv.writer(
-            self.file
-        )
+        self.writer = csv.writer(self.file)
 
         if not exists:
             self.writer.writerow(
@@ -59,7 +53,6 @@ class CSVWriter:
         )
 
         self.file.flush()
-
 
     def close(self):
 

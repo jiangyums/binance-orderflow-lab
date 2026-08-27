@@ -3,63 +3,35 @@ import json
 
 import websockets
 
-
-
 SYMBOL = "btcusdt"
 
 
-WS_URL = (
-    "wss://fstream.binance.com/ws/"
-    f"{SYMBOL}@trade"
-)
+WS_URL = "wss://fstream.binance.com/ws/" f"{SYMBOL}@trade"
 
 
+async def _run_trade(event_queue):
 
-async def _run_trade(
-    event_queue
-):
+    async with websockets.connect(WS_URL, ping_interval=None) as ws:
 
-    async with websockets.connect(
-        WS_URL,
-        ping_interval=None
-    ) as ws:
-
-
-        print(
-            "Trade websocket connected"
-        )
-
+        print("Trade websocket connected")
 
         while True:
 
-
             try:
 
-                message = await asyncio.wait_for(
-                    ws.recv(),
-                    timeout=30
-                )
+                message = await asyncio.wait_for(ws.recv(), timeout=30)
 
             except asyncio.TimeoutError:
 
-                print(
-                    "[trade] recv 超时(30s)，"
-                    "连接可能已僵死"
-                )
+                print("[trade] recv 超时(30s)，" "连接可能已僵死")
 
                 raise
 
-
-            trade = json.loads(
-                message
-            )
-
+            trade = json.loads(message)
 
             if trade.get("e") != "trade":
 
                 continue
-
-
 
             #
             # Binance字段
@@ -70,20 +42,11 @@ async def _run_trade(
             # m: buyer is maker
             #
 
+            price = float(trade["p"])
 
-            price = float(
-                trade["p"]
-            )
-
-
-            qty = float(
-                trade["q"]
-            )
-
+            qty = float(trade["q"])
 
             timestamp = trade["T"]
-
-
 
             #
             # 主动方向判断
@@ -105,48 +68,22 @@ async def _run_trade(
 
                 side = "BUY"
 
-
-
             #
             # 发送统一事件
             #
             await event_queue.put(
                 {
-
                     "type": "trade",
-
-
-                    "timestamp":
-                        timestamp,
-
-
-                    "data":
-                    {
-
-                        "price":
-                            price,
-
-
-                        "qty":
-                            qty,
-
-
-                        "side":
-                            side
-
-                    }
-
+                    "timestamp": timestamp,
+                    "data": {"price": price, "qty": qty, "side": side},
                 }
             )
-
 
 
 _TRADE_RECONNECT_BACKOFF = 3.0
 
 
-async def trade_worker(
-    event_queue
-):
+async def trade_worker(event_queue):
 
     attempt = 0
 
@@ -154,9 +91,7 @@ async def trade_worker(
 
         try:
 
-            await _run_trade(
-                event_queue
-            )
+            await _run_trade(event_queue)
 
             return
 
@@ -164,7 +99,7 @@ async def trade_worker(
             websockets.exceptions.WebSocketException,
             asyncio.TimeoutError,
             OSError,
-            MemoryError
+            MemoryError,
         ) as exc:
 
             attempt += 1
@@ -175,9 +110,7 @@ async def trade_worker(
                 f"{_TRADE_RECONNECT_BACKOFF}s 后重试"
             )
 
-            await asyncio.sleep(
-                _TRADE_RECONNECT_BACKOFF
-            )
+            await asyncio.sleep(_TRADE_RECONNECT_BACKOFF)
 
             continue
 
@@ -187,28 +120,18 @@ async def trade_worker(
 
         except Exception as exc:
 
-            print(
-                f"[trade] 非重连类异常：{type(exc).__name__}: {exc}"
-            )
+            print(f"[trade] 非重连类异常：{type(exc).__name__}: {exc}")
 
             raise
 
 
 async def main():
 
-
     queue = asyncio.Queue()
 
-
-    await trade_worker(
-        queue
-    )
-
+    await trade_worker(queue)
 
 
 if __name__ == "__main__":
 
-
-    asyncio.run(
-        main()
-    )
+    asyncio.run(main())

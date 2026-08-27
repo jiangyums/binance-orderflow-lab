@@ -21,15 +21,10 @@ class EventBuffer:
 
     """
 
-
-    def __init__(
-        self,
-        delay_ms=100
-    ):
+    def __init__(self, delay_ms=100):
 
         # 延迟窗口
         self.delay_ms = delay_ms
-
 
         # 最小堆
         #
@@ -43,46 +38,22 @@ class EventBuffer:
         #
         self.heap = []
 
-
         self.sequence = 0
-
-
 
         # 最新事件时间
         self.latest_timestamp = 0
 
-
-
-    def push(
-        self,
-        event
-    ):
+    def push(self, event):
 
         timestamp = event["timestamp"]
 
+        self.latest_timestamp = max(self.latest_timestamp, timestamp)
 
-        self.latest_timestamp = max(
-            self.latest_timestamp,
-            timestamp
-        )
-
-
-        heapq.heappush(
-            self.heap,
-            (
-                timestamp,
-                self.sequence,
-                event
-            )
-        )
-
+        heapq.heappush(self.heap, (timestamp, self.sequence, event))
 
         self.sequence += 1
 
-
-
     def pop_ready(self):
-
         """
         返回已经安全的事件
 
@@ -100,72 +71,39 @@ class EventBuffer:
 
         """
 
-
         ready = []
 
-
-        threshold = (
-            self.latest_timestamp
-            -
-            self.delay_ms
-        )
-
+        threshold = self.latest_timestamp - self.delay_ms
 
         while self.heap:
 
-
-            timestamp, _, event = (
-                self.heap[0]
-            )
-
+            timestamp, _, event = self.heap[0]
 
             if timestamp > threshold:
 
                 break
 
+            heapq.heappop(self.heap)
 
-            heapq.heappop(
-                self.heap
-            )
-
-
-            ready.append(
-                event
-            )
-
+            ready.append(event)
 
         return ready
 
-
-
     def flush(self):
-
         """
         程序退出时释放剩余事件
         """
 
         result = []
 
-
         while self.heap:
 
-            _, _, event = (
-                heapq.heappop(
-                    self.heap
-                )
-            )
+            _, _, event = heapq.heappop(self.heap)
 
-            result.append(
-                event
-            )
-
+            result.append(event)
 
         return result
 
-
-
     def size(self):
 
-        return len(
-            self.heap
-        )
+        return len(self.heap)

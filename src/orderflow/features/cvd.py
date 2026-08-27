@@ -6,27 +6,19 @@ class CVD:
         self.buy_volume = 0.0
         self.sell_volume = 0.0
 
-
-    def update(
-        self,
-        side,
-        qty
-    ):
+    def update(self, side, qty):
 
         if side == "BUY":
 
             self.buy_volume += qty
             self.value += qty
 
-
         elif side == "SELL":
 
             self.sell_volume += qty
             self.value -= qty
 
-
         return self.value
-
 
     def snapshot(self):
 
