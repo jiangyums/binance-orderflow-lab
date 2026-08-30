@@ -6,17 +6,20 @@ class EventBuffer:
     """
     Timestamp reorder buffer
 
-    用途：
+    [已退役] 事件改为纯信号（数据回读全局 market_state）后，
+    重排失去作用对象，EventProcessor 不再使用本类。保留文件供回溯。
+
+    原用途：
     - 接收 websocket 到达的乱序事件
     - 按 Binance timestamp 排序
     - 延迟一小段时间释放稳定事件
 
-    event格式:
+    event格式（生产者消息，数据回读全局 market_state）:
 
     {
-        "type": "depth",
-        "timestamp": 123456789,
-        "data": {...}
+        "type": "book_updated" | "trade_updated"
+                             | "book_error"   | "trade_error",
+        "timestamp": 123456789
     }
 
     """

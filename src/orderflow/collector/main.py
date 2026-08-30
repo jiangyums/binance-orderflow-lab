@@ -7,7 +7,9 @@ import argparse
 from asyncio import Queue
 
 
-from src.orderflow.collector.binance_depth import depth_worker
+from src.orderflow import market_state
+
+from src.orderflow.collector.binance_depth import orderbook_worker
 
 from src.orderflow.collector.binance_trade import trade_worker
 
@@ -29,37 +31,37 @@ async def main(features_file="data/features.csv", signals_file="data/signals.csv
     print("Starting Binance OrderFlow Lab")
 
     #
+    # 服务器时间校准：所有延迟计算统一走服务器时间轴。
+    # 失败不阻塞启动（退化为本机时钟），worker 的重连机制自行兜底
+    #
+    await market_state.calibrate_clock()
+
+    #
     # Event Queue
     #
     event_queue = Queue()
 
     #
-    # OrderFlow Engine
-    #
-    engine = OrderFlowEngine()
-
-    #
-    # Feature CSV
+    # OrderFlow Engine（数据消费者，持有全部业务管线）
     #
     feature_recorder = FeatureRecorder(features_file)
 
-    #
-    # Signal CSV
-    #
     signal_recorder = SignalRecorder(signals_file)
 
-    #
-    # Event Processor
-    #
-    processor = EventProcessor(event_queue, engine, feature_recorder, signal_recorder)
+    engine = OrderFlowEngine(recorder=feature_recorder, signal_recorder=signal_recorder)
 
     #
-    # Binance Depth
+    # Event Processor（纯调度者：收消息 → 重排 → 路由给 engine）
     #
-    depth_task = asyncio.create_task(depth_worker(event_queue))
+    processor = EventProcessor(event_queue, engine)
 
     #
-    # Binance Trade
+    # Binance Depth（数据生产者）
+    #
+    depth_task = asyncio.create_task(orderbook_worker(event_queue))
+
+    #
+    # Binance Trade（数据生产者）
     #
     trade_task = asyncio.create_task(trade_worker(event_queue))
 

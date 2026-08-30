@@ -6,7 +6,8 @@ import time
 
 from asyncio import Queue
 
-from src.orderflow.collector.binance_depth import depth_worker
+from src.orderflow import market_state
+from src.orderflow.collector.binance_depth import orderbook_worker
 from src.orderflow.collector.binance_trade import trade_worker
 from src.orderflow.engine import OrderFlowEngine
 
@@ -285,15 +286,24 @@ async def processor_run(queue, engine, recorder):
         event = await queue.get()
         et = event.get("type")
         ts = event.get("timestamp")
-        if et == "depth":
-            feat = engine.update_book(event["data"], ts)
-        elif et == "trade":
-            t = event["data"]
-            feat = engine.update_trade(t["price"], t["qty"], t["side"], ts)
+        if et == "book_updated":
+            if not market_state.book_ready:
+                continue
+            feat = engine.update_book(market_state.orderbook, ts)
+            if feat is not None:
+                recorder.write(feat)
+        elif et == "trade_updated":
+            while market_state.trade_set:
+                t = market_state.trade_set.popleft()
+                feat = engine.update_trade(
+                    t["price"], t["qty"], t["side"], t["timestamp"]
+                )
+                if feat is not None:
+                    recorder.write(feat)
+        elif et in ("book_error", "trade_error"):
+            print(f"[monitor] {et}: {event.get('error')}")
         else:
             continue
-        if feat is not None:
-            recorder.write(feat)
 
 
 async def main(prefix="data/monitor", bucket=60, horizons="1,5,10"):
@@ -303,7 +313,7 @@ async def main(prefix="data/monitor", bucket=60, horizons="1,5,10"):
     engine = OrderFlowEngine()
     recorder = MonitorRecorder(prefix=prefix, bucket=bucket, horizons=hz)
 
-    depth_task = asyncio.create_task(depth_worker(queue))
+    depth_task = asyncio.create_task(orderbook_worker(queue))
     trade_task = asyncio.create_task(trade_worker(queue))
     proc_task = asyncio.create_task(processor_run(queue, engine, recorder))
 

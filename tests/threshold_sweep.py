@@ -2,13 +2,24 @@ import argparse
 import bisect
 import csv
 import os
+import sys
+
+# Allow very large CSV fields (some feature columns can be big); the default
+# 128KB limit would otherwise raise _csv.Error on legitimate data.
+csv.field_size_limit(2_147_483_647)
+
+# Make the repo root importable so the script runs without PYTHONPATH set.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.orderflow.signal.engine import SignalEngine
 from src.orderflow.signal.state_tracker import SignalStateTracker
 from src.orderflow.statistics.signal_statistics import SignalStatistics
 
 
-THRESHOLDS = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+# Trade-OFI magnitude cutoffs (in BTC). The observed |tofi| distribution spans
+# p50=0.002 .. p90=0.097 .. p99=0.68 .. max=30, so sweep from the tiny-noise
+# regime up through the large-trade tail where the edge may actually clear cost.
+THRESHOLDS = [0.0, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0]
 DEFAULT_FEE = 0.0004  # per-side fee fraction (~0.04% taker on USD-M futures)
 
 
@@ -24,19 +35,32 @@ def _half_spread(spread, mid):
     return s / (2.0 * m)
 
 
-def replay_and_evaluate(features_path, threshold, tmp_path, fee, obi_weight=0.6, ofi_weight=0.4, ofi_scale=10.0, ofi_mode="linear", ofi_rank_fn=None, ofi_top_pct=0.0):
-    """Replay a FIXED features.csv through the production pipeline at one emit
-    threshold.
+def replay_and_evaluate(
+    features_path,
+    threshold,
+    tmp_path,
+    fee,
+    tofi_scale=1.0,
+    tofi_mode="linear",
+    tofi_rank_fn=None,
+    tofi_top_pct=0.0,
+):
+    """Replay a FIXED features.csv through the trade-OFI pipeline at one emit
+    threshold (min |tofi| to fire a signal).
 
     Returns the eval CSV path and the average round-trip cost fraction per
-    horizon. Signal selection reuses the exact SignalEngine + SignalStateTracker
-    code; returns are computed by binary search on the price timeline
-    (equivalent to SignalEvaluator's 'first price with diff >= horizon' rule).
-    Cost is derived from the REAL recorded spread (half-spread entry + exit +
-    2 x fee), not a flat guess.
+    horizon. Signal selection reuses the exact SignalEngine code; returns are
+    computed by binary search on the price timeline (equivalent to
+    SignalEvaluator's 'first price with diff >= horizon' rule). Cost is derived
+    from the REAL recorded spread (half-spread entry + exit + 2 x fee).
     """
 
-    eng = SignalEngine(threshold=threshold, obi_weight=obi_weight, ofi_weight=ofi_weight, ofi_scale=ofi_scale, ofi_mode=ofi_mode, ofi_rank_fn=ofi_rank_fn)
+    eng = SignalEngine(
+        tofi_threshold=threshold,
+        tofi_scale=tofi_scale,
+        tofi_mode=tofi_mode,
+        tofi_rank_fn=tofi_rank_fn,
+    )
     tracker = SignalStateTracker(emit_flat=True)
 
     rows = []
@@ -53,6 +77,12 @@ def replay_and_evaluate(features_path, threshold, tmp_path, fee, obi_weight=0.6,
                     except (ValueError, TypeError):
                         feat[k] = v  # keep non-numeric (e.g. trade_side)
             rows.append(feat)
+
+    # Depth/trade websockets arrive out of order, so rows are NOT time-sorted.
+    # The bisect-based forward-return lookup below requires an ascending
+    # timeline, so sort by timestamp first (same root cause as the monitor
+    # fragmentation bug).
+    rows.sort(key=lambda r: r["timestamp"])
 
     timestamps = [r["timestamp"] for r in rows]
     mids = [r["mid"] for r in rows]
@@ -74,14 +104,14 @@ def replay_and_evaluate(features_path, threshold, tmp_path, fee, obi_weight=0.6,
                 "strength": filtered.strength,
                 "entry": feat["mid"],
                 "spread": feat.get("spread", 0.0),
-                "ofi": abs(float(feat.get("ofi", 0.0))),
+                "tofi": abs(float(feat.get("tofi", 0.0))),
             }
         )
 
-    if ofi_top_pct > 0 and signals:
-        em = sorted(s["ofi"] for s in signals)
-        cutoff = em[int((100.0 - ofi_top_pct) / 100.0 * (len(em) - 1))]
-        signals = [s for s in signals if s["ofi"] >= cutoff]
+    if tofi_top_pct > 0 and signals:
+        em = sorted(s["tofi"] for s in signals)
+        cutoff = em[int((100.0 - tofi_top_pct) / 100.0 * (len(em) - 1))]
+        signals = [s for s in signals if s["tofi"] >= cutoff]
 
     sum_cost = [0.0, 0.0, 0.0]  # 1s, 5s, 10s
     count = 0
@@ -152,17 +182,15 @@ def aggregate(eval_path):
     stats = SignalStatistics()
     stats.load(eval_path)
 
-    rows = [
-        x for x in stats.data
-        if x["signal"] in ("LONG", "SHORT")
-    ]
+    rows = [x for x in stats.data if x["signal"] in ("LONG", "SHORT")]
     n = len(rows)
     if n == 0:
         return n, (0.0, 0.0), (0.0, 0.0), (0.0, 0.0)
 
     def overall(horizon):
         wins = sum(
-            1 for x in rows
+            1
+            for x in rows
             if (x["signal"] == "LONG" and x[horizon] > 0)
             or (x["signal"] == "SHORT" and x[horizon] < 0)
         )
@@ -175,13 +203,13 @@ def aggregate(eval_path):
     return n, (w1, a1), (w5, a5), (w10, a10)
 
 
-def _build_ofi_rank_fn(path):
+def _build_tofi_rank_fn(path):
     vals = []
     with open(path, "r", encoding="utf-8", newline="") as f:
         for row in csv.DictReader(f):
             try:
-                vals.append(abs(float(row["ofi"])))
-            except (ValueError, TypeError):
+                vals.append(abs(float(row["tofi"])))
+            except (ValueError, TypeError, KeyError):
                 pass
     vals.sort()
     n = len(vals)
@@ -192,12 +220,13 @@ def _build_ofi_rank_fn(path):
 
 def main():
     ap = argparse.ArgumentParser(
-        description="Threshold Sweep: replay a fixed features.csv at multiple emit thresholds."
+        description="Trade-OFI Threshold Sweep: replay a fixed features.csv at "
+        "multiple emit thresholds (min |tofi| to fire a signal)."
     )
     ap.add_argument(
         "--features",
         default="data/features.csv",
-        help="fixed recorded feature dataset (one batch)",
+        help="fixed recorded feature dataset (one session, ideally at tofi_threshold=0.0)",
     )
     ap.add_argument(
         "--thresholds",
@@ -211,17 +240,24 @@ def main():
         default=DEFAULT_FEE,
         help="per-side fee fraction, e.g. 0.0004 = 0.04%% taker (0.0002 maker)",
     )
-    ap.add_argument("--obi-weight", type=float, default=0.6,
-                    help="OBI weight in SignalEngine (default 0.6)")
-    ap.add_argument("--ofi-weight", type=float, default=0.4,
-                    help="OFI weight in SignalEngine (default 0.4)")
-    ap.add_argument("--ofi-scale", type=float, default=10.0,
-                    help="OFI strength divisor (linear mode): strength=min(|ofi|/scale,1)")
-    ap.add_argument("--ofi-mode", default="linear",
-                    choices=["linear", "rank"],
-                    help="OFI strength mode: linear (scalar) or rank (percentile of |ofi|)")
-    ap.add_argument("--ofi-top-pct", type=float, default=0.0,
-                    help="if >0, only trade signals whose |ofi| is in the top P%% of the session")
+    ap.add_argument(
+        "--tofi-scale",
+        type=float,
+        default=1.0,
+        help="trade-OFI strength divisor: strength=min(|tofi|/scale,1)",
+    )
+    ap.add_argument(
+        "--tofi-mode",
+        default="linear",
+        choices=["linear", "rank"],
+        help="trade-OFI strength mode: linear (scalar) or rank (percentile of |tofi|)",
+    )
+    ap.add_argument(
+        "--tofi-top-pct",
+        type=float,
+        default=0.0,
+        help="if >0, only trade signals whose |tofi| is in the top P%% of the session",
+    )
     args = ap.parse_args()
 
     if not os.path.exists(args.features):
@@ -230,14 +266,24 @@ def main():
         return
 
     print(
-        "\nThreshold Sweep  (dataset: %s, fee=%.3f%%/side)\n"
+        "\nTrade-OFI Threshold Sweep  (dataset: %s, fee=%.3f%%/side)\n"
         % (args.features, args.fee * 100)
     )
     print(
-        "%-5s %-8s %-7s %-9s %-9s %-7s %-9s %-9s %-8s %-10s %-10s %-9s"
+        "%-8s %-8s %-7s %-9s %-9s %-7s %-9s %-9s %-8s %-10s %-10s %-9s"
         % (
-            "thr", "samples", "win1%", "ret1", "net1",
-            "win5%", "ret5", "net5", "win10%", "ret10", "net10", "cost",
+            "thr",
+            "samples",
+            "win1%",
+            "ret1",
+            "net1",
+            "win5%",
+            "ret5",
+            "net5",
+            "win10%",
+            "ret10",
+            "net10",
+            "cost",
         )
     )
     print("-" * 111)
@@ -245,15 +291,21 @@ def main():
     tmp_dir = "data/_sweep_tmp"
     os.makedirs(tmp_dir, exist_ok=True)
 
-    ofi_rank_fn = None
-    if args.ofi_mode == "rank":
-        ofi_rank_fn = _build_ofi_rank_fn(args.features)
+    tofi_rank_fn = None
+    if args.tofi_mode == "rank":
+        tofi_rank_fn = _build_tofi_rank_fn(args.features)
 
     for thr in args.thresholds:
         tmp = os.path.join(tmp_dir, "T%s.csv" % thr)
         tmp, (c1, c5, c10) = replay_and_evaluate(
-            args.features, thr, tmp, args.fee, args.obi_weight, args.ofi_weight,
-            args.ofi_scale, args.ofi_mode, ofi_rank_fn, args.ofi_top_pct,
+            args.features,
+            thr,
+            tmp,
+            args.fee,
+            args.tofi_scale,
+            args.tofi_mode,
+            tofi_rank_fn,
+            args.tofi_top_pct,
         )
         n, (w1, a1), (w5, a5), (w10, a10) = aggregate(tmp)
         net1 = a1 - c1
@@ -261,12 +313,19 @@ def main():
         net10 = a10 - c10
         cost_avg = (c1 + c5 + c10) / 3.0
         print(
-            "%-5.1f %-8d %-7.1f%% %-9.5f %-9.5f %-7.1f%% %-9.5f %-9.5f %-8.1f%% %-10.5f %-10.5f %-9.5f"
+            "%-8.4f %-8d %-7.1f%% %-9.5f %-9.5f %-7.1f%% %-9.5f %-9.5f %-8.1f%% %-10.5f %-10.5f %-9.5f"
             % (
-                thr, n,
-                w1 * 100, a1, net1,
-                w5 * 100, a5, net5,
-                w10 * 100, a10, net10,
+                thr,
+                n,
+                w1 * 100,
+                a1,
+                net1,
+                w5 * 100,
+                a5,
+                net5,
+                w10 * 100,
+                a10,
+                net10,
                 cost_avg,
             )
         )

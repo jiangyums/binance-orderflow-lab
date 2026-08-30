@@ -1,7 +1,18 @@
+"""trade 数据生产者。
+
+职责：把每笔成交追加到全局 trade_set（market_state.trade_set），
+通过消息通知消费者：
+  - 每收到一笔成交 → trade_updated
+  - 连接断开等异常   → trade_error（随后自动重连）
+本模块不参与任何指标计算。
+"""
+
 import asyncio
 import json
 
 import websockets
+
+from src.orderflow import market_state
 
 SYMBOL = "btcusdt"
 
@@ -49,6 +60,18 @@ async def _run_trade(event_queue):
             timestamp = trade["T"]
 
             #
+            # 生产者侧校验：滞后过高的成交直接丢弃（不入 trade_set）。
+            # 成交之间相互独立，单笔丢弃不破坏任何状态。
+            #
+            latency = market_state.now_ms() - timestamp
+
+            if latency > market_state.LATENCY_MAX_MS:
+
+                market_state.log_stale_drop("trade", latency)
+
+                continue
+
+            #
             # 主动方向判断
             #
             # m=True:
@@ -69,13 +92,17 @@ async def _run_trade(event_queue):
                 side = "BUY"
 
             #
-            # 发送统一事件
+            # 追加进全局成交集合，再发成功更新信号
+            # （数据由 processor 回读全局 trade_set）
             #
+            market_state.trade_set.append(
+                {"timestamp": timestamp, "price": price, "qty": qty, "side": side}
+            )
+
             await event_queue.put(
                 {
-                    "type": "trade",
+                    "type": "trade_updated",
                     "timestamp": timestamp,
-                    "data": {"price": price, "qty": qty, "side": side},
                 }
             )
 
@@ -102,6 +129,17 @@ async def trade_worker(event_queue):
             MemoryError,
         ) as exc:
 
+            #
+            # 通知消费者：trade 数据出错
+            #
+            await event_queue.put(
+                {
+                    "type": "trade_error",
+                    "timestamp": market_state.now_ms(),
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+            )
+
             attempt += 1
 
             print(
@@ -119,6 +157,14 @@ async def trade_worker(event_queue):
             raise
 
         except Exception as exc:
+
+            await event_queue.put(
+                {
+                    "type": "trade_error",
+                    "timestamp": market_state.now_ms(),
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+            )
 
             print(f"[trade] 非重连类异常：{type(exc).__name__}: {exc}")
 

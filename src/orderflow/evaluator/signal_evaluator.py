@@ -40,14 +40,14 @@ class SignalEvaluator:
         #
         self.prices = deque(maxlen=2000)
 
-    def add_signal(self, signal, feature):
+    def add_signal(self, signal, feature, entry_mid=None):
 
         self.pending.append(
             {
                 "timestamp": signal.timestamp,
                 "signal": signal.side.value,
                 "strength": signal.strength,
-                "price": feature["mid"],
+                "price": entry_mid if entry_mid is not None else feature["mid"],
             }
         )
 
