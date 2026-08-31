@@ -1,0 +1,29 @@
+symbol: btcusdt
+
+websocket:
+  depth_url: wss://fstream.binance.com/ws/btcusdt@depth@100ms
+  trade_url: wss://fstream.binance.com/ws/btcusdt@trade
+  timeout_seconds: 30
+
+rest:
+  snapshot_url: https://fapi.binance.com/fapi/v1/depth
+  time_url: https://fapi.binance.com/fapi/v1/time
+  depth_limit: 1000
+
+signal:
+  tofi_threshold: 0.0
+  tofi_scale: 1.0
+  tofi_mode: linear
+
+output:
+  features: data/features.csv
+  signals: data/signals.csv
+  evaluation: data/evaluation.csv
+  format: both
+
+latency:
+  max_ms: 1000
+  gap_warn_ms: 3000
+
+monitor:
+  interval_seconds: 60
