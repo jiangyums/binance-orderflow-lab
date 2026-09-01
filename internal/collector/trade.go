@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strconv"
 	"sync"
 	"time"
 
@@ -12,12 +13,14 @@ import (
 )
 
 type tradeMessage struct {
-	E string  `json:"e"`
-	T int64   `json:"T"`
-	S string  `json:"s"`
-	P float64 `json:"p"`
-	Q float64 `json:"q"`
-	M bool    `json:"m"`
+	E  interface{} `json:"e"`
+	E2 int64       `json:"E"`
+	S  string      `json:"s"`
+	T  int64       `json:"t"`
+	T2 int64       `json:"T"`
+	P  string      `json:"p"`
+	Q  string      `json:"q"`
+	M  bool        `json:"m"`
 }
 
 type Trade struct {
@@ -38,11 +41,14 @@ func parseTradeMessage(msg []byte) (*Trade, error) {
 		side = "SELL"
 	}
 
+	price, _ := strconv.ParseFloat(tm.P, 64)
+	qty, _ := strconv.ParseFloat(tm.Q, 64)
+
 	return &Trade{
 		Side:  side,
-		Price: tm.P,
-		Qty:   tm.Q,
-		Time:  tm.T,
+		Price: price,
+		Qty:   qty,
+		Time:  tm.T2,
 	}, nil
 }
 
@@ -54,6 +60,7 @@ func TradeWorker(
 	tradesMu *sync.Mutex,
 	eventCh chan<- model.Event,
 ) error {
+	b := newBackoff(3*time.Second, 60*time.Second)
 	for {
 		select {
 		case <-ctx.Done():
@@ -63,10 +70,18 @@ func TradeWorker(
 
 		client := websocket.NewClient(url, timeoutSeconds)
 		if err := client.Connect(ctx); err != nil {
+			// Connect 内部走 DialContext,ctx 取消时会立即返回;
+			// 这里让重试等待本身也可被 ctx 打断,并做指数退避。
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
 			log.Printf("trade connect failed: %v", err)
-			time.Sleep(3 * time.Second)
+			if err := sleepCtx(ctx, b.next()); err != nil {
+				return ctx.Err()
+			}
 			continue
 		}
+		b.reset()
 
 		log.Println("trade connected")
 
@@ -93,16 +108,20 @@ func TradeWorker(
 
 			tradesMu.Lock()
 			*trades = append(*trades, model.Trade{
-				Side:     trade.Side,
-				Price:    trade.Price,
-				Quantity: trade.Qty,
+				Side:      trade.Side,
+				Price:     trade.Price,
+				Quantity:  trade.Qty,
 				Timestamp: trade.Time,
 			})
 			tradesMu.Unlock()
 
-			eventCh <- model.Event{
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case eventCh <- model.Event{
 				Type:      model.TradeUpdated,
 				Timestamp: trade.Time,
+			}:
 			}
 		}
 	}

@@ -10,9 +10,7 @@ func NewOBICalculator(levels int) *OBICalculator {
 	return &OBICalculator{levels: levels}
 }
 
-func (c *OBICalculator) Update(event model.Event, book *model.OrderBook, trades []model.Trade) model.Feature {
-	feature := model.Feature{Timestamp: event.Timestamp}
-
+func (c *OBICalculator) Update(event model.Event, book *model.OrderBook, trades []model.Trade, feat *model.Feature) {
 	bidVol := book.BidVolume(c.levels)
 	askVol := book.AskVolume(c.levels)
 
@@ -21,15 +19,13 @@ func (c *OBICalculator) Update(event model.Event, book *model.OrderBook, trades 
 		obi := (bidVol - askVol) / total
 		switch c.levels {
 		case 1:
-			feature.OBI1 = obi
+			feat.OBI1 = obi
 		case 5:
-			feature.OBI5 = obi
+			feat.OBI5 = obi
 		case 10:
-			feature.OBI10 = obi
+			feat.OBI10 = obi
 		}
 	}
-
-	return feature
 }
 
 func (c *OBICalculator) Reset() {

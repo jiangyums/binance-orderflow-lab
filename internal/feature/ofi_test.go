@@ -75,8 +75,9 @@ func TestOFICalculator_Update(t *testing.T) {
 				lastAskPrice: tt.lastAskPrice,
 				lastAskQty:   tt.lastAskQty,
 			}
-			feature := calc.Update(model.Event{}, &tt.book, nil)
-			assert.InDelta(t, tt.expected, feature.OFI, 0.001)
+			feat := &model.Feature{}
+			calc.Update(model.Event{}, &tt.book, nil, feat)
+			assert.InDelta(t, tt.expected, feat.OFI, 0.001)
 		})
 	}
 }

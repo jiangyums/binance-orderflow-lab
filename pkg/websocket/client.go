@@ -74,3 +74,11 @@ func (c *Client) Close() error {
 func (c *Client) IsConnected() bool {
 	return c.conn != nil
 }
+
+// SetReadDeadline 设置读取超时。
+func (c *Client) SetReadDeadline(t time.Time) error {
+	if c.conn != nil {
+		return c.conn.SetReadDeadline(t)
+	}
+	return nil
+}

@@ -22,7 +22,9 @@ func NewTradeOFISignalGenerator(threshold, scale float64, mode string) *TradeOFI
 }
 
 func (g *TradeOFISignalGenerator) Generate(feature model.Feature) *model.Signal {
-	if math.Abs(feature.TOFI) < g.threshold {
+	// TOFI == 0 表示本步无新成交(深度事件),必须视为 Flat;
+	// 否则 threshold=0 时每个深度事件都会产生虚假信号。
+	if feature.TOFI == 0 || math.Abs(feature.TOFI) < g.threshold {
 		return &model.Signal{
 			Timestamp: feature.Timestamp,
 			Side:      model.Flat,

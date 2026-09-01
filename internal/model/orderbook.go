@@ -16,6 +16,22 @@ func NewOrderBook() *OrderBook {
 	}
 }
 
+func (ob *OrderBook) Lock() {
+	ob.mu.Lock()
+}
+
+func (ob *OrderBook) Unlock() {
+	ob.mu.Unlock()
+}
+
+func (ob *OrderBook) RLock() {
+	ob.mu.RLock()
+}
+
+func (ob *OrderBook) RUnlock() {
+	ob.mu.RUnlock()
+}
+
 func (ob *OrderBook) Reset() {
 	ob.mu.Lock()
 	defer ob.mu.Unlock()

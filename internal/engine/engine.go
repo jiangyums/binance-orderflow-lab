@@ -20,7 +20,8 @@ import (
 type Engine struct {
 	eventCh     chan model.Event
 	book        *model.OrderBook
-	bookMu      sync.RWMutex
+	bookReady   bool
+	bookReadyMu sync.RWMutex
 	trades      []model.Trade
 	tradesMu    sync.Mutex
 	calculators []feature.Calculator
@@ -46,6 +47,7 @@ func New(cfg *config.Config) *Engine {
 			feature.NewOBICalculator(10),
 			feature.NewMicroPriceCalculator(),
 			feature.NewTakerMakerCalculator(),
+			feature.NewTradeOFICalculator(),
 		},
 		generator: signal.NewTradeOFISignalGenerator(
 			cfg.Signal.TOFIThreshold,
@@ -65,14 +67,35 @@ func (e *Engine) Run(ctx context.Context) error {
 
 	g, ctx := errgroup.WithContext(ctx)
 
+	// 深度流协程 (内部管理快照协程)
 	g.Go(func() error {
-		return collector.DepthWorker(ctx, e.config.WebSocket.DepthURL, e.config.WebSocket.Timeout, e.book, e.eventCh)
+		return collector.DepthWorker(
+			ctx,
+			e.config.WebSocket.DepthURL,
+			e.config.WebSocket.Timeout,
+			e.book,
+			&e.bookReady,
+			&e.bookReadyMu,
+			e.config.REST.SnapshotURL,
+			e.config.Symbol,
+			e.config.REST.DepthLimit,
+			e.eventCh,
+		)
 	})
 
+	// 交易流协程
 	g.Go(func() error {
-		return collector.TradeWorker(ctx, e.config.WebSocket.TradeURL, e.config.WebSocket.Timeout, &e.trades, &e.tradesMu, e.eventCh)
+		return collector.TradeWorker(
+			ctx,
+			e.config.WebSocket.TradeURL,
+			e.config.WebSocket.Timeout,
+			&e.trades,
+			&e.tradesMu,
+			e.eventCh,
+		)
 	})
 
+	// 事件处理协程
 	g.Go(func() error {
 		return e.processEvents(ctx)
 	})
@@ -103,27 +126,50 @@ func (e *Engine) dispatchEvent(event model.Event) {
 }
 
 func (e *Engine) handleBookUpdate(event model.Event) {
-	e.bookMu.RLock()
-	book := *e.book
-	e.bookMu.RUnlock()
+	// 检查 OrderBook 是否就绪
+	e.bookReadyMu.RLock()
+	ready := e.bookReady
+	e.bookReadyMu.RUnlock()
+	if !ready {
+		return
+	}
 
+	// 拷贝 trades 快照
+	e.tradesMu.Lock()
+	trades := make([]model.Trade, len(e.trades))
+	copy(trades, e.trades)
+	e.tradesMu.Unlock()
+
+	// 计算特征。外部不持有 book.RLock:
+	// calculator 内部经 BestBid/BestAsk 自带 RLock,RWMutex 不支持同 goroutine 重入,
+	// 若外层持锁后再内层加锁, 与深度写锁(Lock)并发时会死锁。
 	feat := model.Feature{Timestamp: event.Timestamp}
 	for _, calc := range e.calculators {
-		feat = calc.Update(event, &book, e.trades)
+		calc.Update(event, e.book, trades, &feat)
 	}
 
 	e.processFeature(feat)
 }
 
 func (e *Engine) handleTradeUpdate(event model.Event) {
+	// 拷贝 trades 快照
 	e.tradesMu.Lock()
 	trades := make([]model.Trade, len(e.trades))
 	copy(trades, e.trades)
 	e.tradesMu.Unlock()
 
+	// 检查 OrderBook 是否就绪
+	e.bookReadyMu.RLock()
+	ready := e.bookReady
+	e.bookReadyMu.RUnlock()
+	if !ready {
+		return
+	}
+
+	// 计算特征。calculators 内部自锁(见 handleBookUpdate 注释)。
 	feat := model.Feature{Timestamp: event.Timestamp}
 	for _, calc := range e.calculators {
-		feat = calc.Update(event, e.book, trades)
+		calc.Update(event, e.book, trades, &feat)
 	}
 
 	e.processFeature(feat)

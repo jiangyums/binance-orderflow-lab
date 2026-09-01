@@ -46,8 +46,9 @@ func TestOBICalculator_Update(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			calc := &OBICalculator{levels: tt.levels}
-			feature := calc.Update(model.Event{}, &tt.book, nil)
-			assert.InDelta(t, tt.expected, feature.OBI1, 0.001)
+			feat := &model.Feature{}
+			calc.Update(model.Event{}, &tt.book, nil, feat)
+			assert.InDelta(t, tt.expected, feat.OBI1, 0.001)
 		})
 	}
 }

@@ -8,27 +8,23 @@ func NewMicroPriceCalculator() *MicroPriceCalculator {
 	return &MicroPriceCalculator{}
 }
 
-func (c *MicroPriceCalculator) Update(event model.Event, book *model.OrderBook, trades []model.Trade) model.Feature {
-	feature := model.Feature{Timestamp: event.Timestamp}
-
+func (c *MicroPriceCalculator) Update(event model.Event, book *model.OrderBook, trades []model.Trade, feat *model.Feature) {
 	bidPrice, bidQty, bidOk := book.BestBid()
 	askPrice, askQty, askOk := book.BestAsk()
 
 	if !bidOk || !askOk {
-		return feature
+		return
 	}
 
 	total := bidQty + askQty
 	if total > 0 {
-		feature.Microprice = (bidPrice*bidQty + askPrice*askQty) / total
+		feat.Microprice = (bidPrice*bidQty + askPrice*askQty) / total
 	}
 
-	feature.Mid = (bidPrice + askPrice) / 2
-	feature.Spread = askPrice - bidPrice
-	feature.BidDepth = bidQty
-	feature.AskDepth = askQty
-
-	return feature
+	feat.Mid = (bidPrice + askPrice) / 2
+	feat.Spread = askPrice - bidPrice
+	feat.BidDepth = bidQty
+	feat.AskDepth = askQty
 }
 
 func (c *MicroPriceCalculator) Reset() {

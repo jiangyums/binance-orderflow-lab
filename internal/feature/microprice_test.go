@@ -42,8 +42,9 @@ func TestMicroPriceCalculator_Update(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			calc := &MicroPriceCalculator{}
-			feature := calc.Update(model.Event{}, &tt.book, nil)
-			assert.InDelta(t, tt.expected, feature.Microprice, 0.001)
+			feat := &model.Feature{}
+			calc.Update(model.Event{}, &tt.book, nil, feat)
+			assert.InDelta(t, tt.expected, feat.Microprice, 0.001)
 		})
 	}
 }

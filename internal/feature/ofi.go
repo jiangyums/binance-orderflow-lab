@@ -13,20 +13,18 @@ func NewOFICalculator() *OFICalculator {
 	return &OFICalculator{}
 }
 
-func (c *OFICalculator) Update(event model.Event, book *model.OrderBook, trades []model.Trade) model.Feature {
-	feature := model.Feature{Timestamp: event.Timestamp}
-
+func (c *OFICalculator) Update(event model.Event, book *model.OrderBook, trades []model.Trade, feat *model.Feature) {
 	bidPrice, bidQty, bidOk := book.BestBid()
 	askPrice, askQty, askOk := book.BestAsk()
 
 	if !bidOk || !askOk {
-		return feature
+		return
 	}
 
-	feature.Mid = (bidPrice + askPrice) / 2
-	feature.Spread = askPrice - bidPrice
-	feature.BidDepth = bidQty
-	feature.AskDepth = askQty
+	feat.Mid = (bidPrice + askPrice) / 2
+	feat.Spread = askPrice - bidPrice
+	feat.BidDepth = bidQty
+	feat.AskDepth = askQty
 
 	var ofi float64
 
@@ -50,14 +48,12 @@ func (c *OFICalculator) Update(event model.Event, book *model.OrderBook, trades 
 		ofi -= (askQty - c.lastAskQty)
 	}
 
-	feature.OFI = ofi
+	feat.OFI = ofi
 
 	c.lastBidPrice = bidPrice
 	c.lastBidQty = bidQty
 	c.lastAskPrice = askPrice
 	c.lastAskQty = askQty
-
-	return feature
 }
 
 func (c *OFICalculator) Reset() {
