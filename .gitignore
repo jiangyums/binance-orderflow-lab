@@ -9,6 +9,7 @@ __pycache__/
 
 # Runtime data / outputs (regenerate by running the collector)
 data/
+research/results/
 
 # Tool / IDE state
 .opencode/
