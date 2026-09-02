@@ -1,8 +1,12 @@
 # Go Refactoring Design: binance-orderflow-lab
 
 **Date:** 2026-08-31
-**Status:** Approved
+**Status:** SUPERSEDED on 2026-09-02
 **Approach:** Go-Idiomatic Redesign (Option B)
+
+> **注意（2026-09-02）**：本项目方向已转向 **Rust + hftbacktest** 方案，
+> 本文档作废，不再作为实现依据。请参见
+> `2026-09-02-orderflow-indicator-research-design.md`。
 
 ---
 

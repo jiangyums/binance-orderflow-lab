@@ -1,5 +1,8 @@
 # Go Refactoring Implementation Plan
 
+> **SUPERSEDED on 2026-09-02**：本项目方向已转向 **Rust + hftbacktest** 方案，本计划作废。
+> 请参见 `specs/2026-09-02-orderflow-indicator-research-design.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Refactor the Python orderflow research laboratory to Go with idiomatic patterns, maintaining feature parity and improving performance.
