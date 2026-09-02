@@ -33,7 +33,10 @@ def download_zip(url: str, dest_dir: str) -> str:
 
 def _read_zip_text(path: str) -> str:
     with zipfile.ZipFile(path) as zf:
-        name = zf.namelist()[0]
+        names = zf.namelist()
+        if not names:
+            raise ValueError(f'zip has no members: {path}')
+        name = names[0]
         raw = zf.read(name)
     if name.endswith('.gz'):
         raw = gzip.decompress(raw)

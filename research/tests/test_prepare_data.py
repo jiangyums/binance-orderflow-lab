@@ -1,11 +1,39 @@
+import gzip
 import os
 import tempfile
+import zipfile
 
 import numpy as np
 
 from hftbacktest.data.utils import binancehistmktdata
 
 from research import prepare_data
+
+
+def test_read_zip_text_plain_and_gz():
+    with tempfile.TemporaryDirectory() as td:
+        plain_zip = os.path.join(td, 'plain.zip')
+        with zipfile.ZipFile(plain_zip, 'w') as zf:
+            zf.writestr('BTCUSDT-depth.csv', 'symbol,timestamp\nBTCUSDT,1\n')
+        assert prepare_data._read_zip_text(plain_zip) == 'symbol,timestamp\nBTCUSDT,1\n'
+
+        gz_zip = os.path.join(td, 'gz.zip')
+        with zipfile.ZipFile(gz_zip, 'w') as zf:
+            zf.writestr('BTCUSDT-depth.csv.gz', gzip.compress(b'symbol,timestamp\nBTCUSDT,1\n'))
+        assert prepare_data._read_zip_text(gz_zip) == 'symbol,timestamp\nBTCUSDT,1\n'
+
+
+def test_read_zip_text_empty_raises():
+    with tempfile.TemporaryDirectory() as td:
+        empty_zip = os.path.join(td, 'empty.zip')
+        with zipfile.ZipFile(empty_zip, 'w'):
+            pass
+        try:
+            prepare_data._read_zip_text(empty_zip)
+        except ValueError as exc:
+            assert 'no members' in str(exc)
+        else:
+            raise AssertionError('expected ValueError for empty zip')
 
 
 def test_convert_hist_depth_trades_roundtrip():
@@ -44,4 +72,12 @@ def test_download_url_template():
     assert url == (
         'https://data.binance.vision/data/futures/um/daily/BTCUSDT/aggTrades/'
         'BTCUSDT-aggTrades-2026-08-26.zip'
+    )
+
+
+def test_download_url_template_bookdepth():
+    url = prepare_data.hist_data_url('bookDepth', '2026-08-26')
+    assert url == (
+        'https://data.binance.vision/data/futures/um/daily/BTCUSDT/bookDepth/'
+        'BTCUSDT-bookDepth-1000-2026-08-26.zip'
     )
