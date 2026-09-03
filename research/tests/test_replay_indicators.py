@@ -7,7 +7,7 @@ from hftbacktest.types import (
 )
 
 from research import config
-from research.replay_indicators import replay_to_df
+from research.replay_indicators import build_asset, replay_to_df
 
 
 def _event(ev, ts, px, qty):
@@ -39,6 +39,11 @@ def _make_asset():
         .last_trades_capacity(config.LAST_TRADES_CAP)
     )
     return asset
+
+
+def test_build_asset_empty_snapshot_list_ok():
+    a = build_asset([np.zeros(0, dtype=event_dtype)], [])
+    assert a is not None
 
 
 def test_replay_produces_rows():

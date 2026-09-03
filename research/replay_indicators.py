@@ -17,11 +17,11 @@ def build_asset(feed, snapshot=None, tick_size=0.1, lot_size=0.001):
         asset = asset.data(feed)
     else:
         asset = asset.data([feed])
-    if snapshot is not None:
-        if isinstance(snapshot, list):
+    if isinstance(snapshot, list):
+        if snapshot:
             asset = asset.initial_snapshot(snapshot[0])
-        else:
-            asset = asset.initial_snapshot(snapshot)
+    elif snapshot is not None:
+        asset = asset.initial_snapshot(snapshot)
     asset = (
         asset
         .tick_size(tick_size)
