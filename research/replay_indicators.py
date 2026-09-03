@@ -226,7 +226,14 @@ def _sample(hbt, max_rows,
     return n
 
 
-def replay_to_df(hbt):
+def _run_sample(hbt):
+    """Allocates buffers, runs the shared njit sampling loop, returns DataFrame.
+
+    Shared by the replay track (``HashMapMarketDepthBacktest``) and the live
+    track (``HashMapMarketDepthLiveBot``); both expose the same
+    depth()/last_trades()/clear_last_trades()/current_timestamp/elapse()
+    interface with matching return codes (0=ok, 1=end-of-data/error).
+    """
     max_rows = 1_000_000
     bid_px_buf = np.empty(config.BOOK_OFI_LEVELS, np.float64)
     bid_qty_buf = np.empty(config.BOOK_OFI_LEVELS, np.float64)
@@ -269,3 +276,8 @@ def replay_to_df(hbt):
         'ask_qty': out_ask_qty[:n],
     })
     return df
+
+
+def replay_to_df(hbt):
+    """Replays the backtest through the shared sampling loop; see _run_sample."""
+    return _run_sample(hbt)
