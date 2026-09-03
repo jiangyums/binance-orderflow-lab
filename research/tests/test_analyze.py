@@ -4,7 +4,7 @@ import pandas as pd
 from research import analyze
 
 
-def _make_df(n=1000):
+def _make_df(n=2000):
     rng = np.random.default_rng(0)
     t0 = 1_660_000_000_000
     ts = np.arange(n) * 1000 + t0
@@ -24,17 +24,21 @@ def _make_df(n=1000):
 
 def test_add_forward_returns():
     df = analyze.add_forward_returns(_make_df())
+    mids = df['mid'].to_numpy()
     for h in analyze.HORIZONS_S:
         col = f'fwd_ret_{h}s'
         assert col in df.columns
-        assert df[col].iloc[0] == 0.0 or not np.isnan(df[col].iloc[0])
+        expected_first = (mids[h] - mids[0]) / mids[0]
+        assert np.isclose(df[col].iloc[0], expected_first)
+        # tail h rows must be NaN
+        assert df[col].iloc[-h:].isna().all()
 
 
 def test_hit_rate_random_walk_about_50():
     df = analyze.add_forward_returns(_make_df())
     hr = analyze.hit_rate(df, indicator='obi', horizon_s=5)
-    assert 0.0 <= hr['hit_rate'] <= 1.0
-    assert 'n' in hr and 'p_value' in hr
+    assert 0.4 < hr['hit_rate'] < 0.6
+    assert hr['n'] > 1000
 
 
 def test_simple_strategy_returns_stats():

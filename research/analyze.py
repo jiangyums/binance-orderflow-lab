@@ -19,7 +19,7 @@ def add_forward_returns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _drop_small_abs(df, indicator, frac=0.10):
+def _drop_small_abs(df, indicator, frac=config.DROP_SMALL_ABS_FRAC):
     threshold = df[indicator].abs().quantile(frac)
     return df[df[indicator].abs() >= threshold]
 
@@ -98,7 +98,8 @@ def simple_strategy(df, indicator, horizon_s,
     cum = t['net_ret'].cumsum()
     peak = cum.cummax()
     drawdown = cum - peak
-    sharpe = t['net_ret'].mean() / t['net_ret'].std() * np.sqrt(86400 / horizon_s) if t['net_ret'].std() > 0 else np.nan
+    # 近似年化：假设每秒最多一笔交易（实际上信号稀疏），为日胜率 Sharpe 上界
+    sharpe = t['net_ret'].mean() / t['net_ret'].std() * np.sqrt(config.SECONDS_PER_DAY / horizon_s) if t['net_ret'].std() > 0 else np.nan
     return {
         'indicator': indicator, 'horizon_s': horizon_s, 'n_trades': n_trades,
         'win_rate': win_rate, 'cum_profit': cum.iloc[-1], 'max_drawdown': drawdown.min(),

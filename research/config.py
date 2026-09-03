@@ -18,6 +18,10 @@ ROUND_TRIP_COST = 2 * TAKER_FEE
 Z_WINDOW_S = 300               # Z-score 滚动窗口
 Z_THRESHOLD = 1.5
 
+# 统计分析参数
+DROP_SMALL_ABS_FRAC = 0.10     # hit-rate 中剔除 |indicator| 过小样本的分位阈值
+SECONDS_PER_DAY = 86_400       # 秒/天，用于 Sharpe 近似
+
 # 数据
 DATA_DIR = 'data'
 RESULTS_DIR = 'research/results'
