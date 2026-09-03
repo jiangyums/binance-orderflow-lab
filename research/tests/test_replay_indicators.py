@@ -61,3 +61,23 @@ def test_trade_ofi_bucket():
     row5 = df[df['timestamp'] == 1_660_000_005_000]
     assert len(row5) == 1
     assert np.isclose(row5['trade_ofi'].iloc[0], 1.0)
+
+
+def test_deep_book_does_not_crash():
+    events = []
+    ts0 = 1_660_000_000_000
+    # 500 bid levels and 500 ask levels in the snapshot
+    for i in range(500):
+        events.append(_event(DEPTH_SNAPSHOT_EVENT | LOCAL_EVENT | BUY_EVENT, ts0 - 1, 24670.0 - 0.1 * i, 1.0))
+        events.append(_event(DEPTH_SNAPSHOT_EVENT | LOCAL_EVENT | SELL_EVENT, ts0 - 1, 24671.0 + 0.1 * i, 1.0))
+    # a couple seconds of depth activity so elapse advances
+    for k in range(1, 3):
+        t = ts0 + k * 1000
+        events.append(_event(DEPTH_EVENT | LOCAL_EVENT | BUY_EVENT, t, 24670.0, 1.0 + 0.1))
+        events.append(_event(DEPTH_EVENT | LOCAL_EVENT | SELL_EVENT, t, 24671.0, 1.0 - 0.1))
+    data = np.array(sorted(events, key=lambda e: e[1]), dtype=event_dtype)
+    asset = (BacktestAsset().data([data]).tick_size(0.1).lot_size(0.001).last_trades_capacity(config.LAST_TRADES_CAP))
+    hbt = HashMapMarketDepthBacktest([asset])
+    df = replay_to_df(hbt)
+    assert len(df) >= 2
+    assert np.isclose(df['obi'].iloc[0], 0.0)  # symmetric 500/500 -> 0

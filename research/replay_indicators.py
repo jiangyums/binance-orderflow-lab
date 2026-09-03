@@ -39,30 +39,66 @@ def build_hbt(feed, snapshot=None, tick_size=0.1, lot_size=0.001):
 
 @njit
 def _extract_top(snapshot, is_bid, max_levels, out_px, out_qty):
-    """从 depth.snapshot() 提取前 max_levels 档（按价格排序）。"""
+    """从 depth.snapshot() 流式提取前 max_levels 档（按价格排序），不越界。
+
+    out_px[0:count] 始终保持有序：bid 按价格降序，ask 按价格升序。
+    只写入下标 0..max_levels-1，永远不会越界。
+    """
     count = 0
     for i in range(len(snapshot)):
         ev = snapshot[i]
         if is_bid:
             if (ev.ev & BUY_EVENT) == 0:
                 continue
+            # bid：价格越高越靠前
         else:
             if (ev.ev & SELL_EVENT) == 0:
                 continue
-        out_px[count] = ev.px
-        out_qty[count] = ev.qty
-        count += 1
-    # 冒泡：bid 降序 / ask 升序，仅保留前 max_levels
-    for i in range(min(count, max_levels)):
-        for j in range(i + 1, count):
+            # ask：价格越低越靠前
+
+        if count == max_levels:
+            # 数组已满：只有优于最差档（或与其同价）才插入并剔除最差档
+            worst = out_px[max_levels - 1]
             if is_bid:
-                swap = out_px[j] > out_px[i]
+                better = ev.px > worst
             else:
-                swap = out_px[j] < out_px[i]
-            if swap:
-                out_px[i], out_px[j] = out_px[j], out_px[i]
-                out_qty[i], out_qty[j] = out_qty[j], out_qty[i]
-    return min(count, max_levels)
+                better = ev.px < worst
+            if not better and not abs(ev.px - worst) < 1e-12:
+                continue
+            # 从最差档位置向左找插入点
+            pos = max_levels - 1
+            while pos > 0:
+                if is_bid:
+                    if not (ev.px > out_px[pos - 1]):
+                        break
+                else:
+                    if not (ev.px < out_px[pos - 1]):
+                        break
+                pos -= 1
+            # 右移并覆盖最差档（下标不超过 max_levels-1）
+            for j in range(max_levels - 1, pos, -1):
+                out_px[j] = out_px[j - 1]
+                out_qty[j] = out_qty[j - 1]
+            out_px[pos] = ev.px
+            out_qty[pos] = ev.qty
+        else:
+            # 数组未满：直接插入并保持有序
+            pos = count
+            while pos > 0:
+                if is_bid:
+                    if not (ev.px > out_px[pos - 1]):
+                        break
+                else:
+                    if not (ev.px < out_px[pos - 1]):
+                        break
+                pos -= 1
+            for j in range(count, pos, -1):
+                out_px[j] = out_px[j - 1]
+                out_qty[j] = out_qty[j - 1]
+            out_px[pos] = ev.px
+            out_qty[pos] = ev.qty
+            count += 1
+    return count
 
 
 @njit
@@ -145,6 +181,8 @@ def _sample(hbt, max_rows,
         snap = depth.snapshot()
         cur_bid_n = _extract_top(snap, True, max_levels, bid_px_buf, bid_qty_buf)
         cur_ask_n = _extract_top(snap, False, max_levels, ask_px_buf, ask_qty_buf)
+        # Rust 端 snapshot() 分配的内存必须手动释放，否则每秒泄漏 ~0.65MB
+        depth.snapshot_free(snap)
         if have_prev:
             db = _level_delta(bid_px_buf, bid_qty_buf, cur_bid_n, prev_bid_px, prev_bid_qty, prev_bid_n)
             da = _level_delta(ask_px_buf, ask_qty_buf, cur_ask_n, prev_ask_px, prev_ask_qty, prev_ask_n)
@@ -162,13 +200,16 @@ def _sample(hbt, max_rows,
         have_prev = True
 
         # trend: 60s 前 mid
-        mid_history[hist_idx] = mid
-        hist_count += 1
-        if hist_count > trend_slots:
-            past = mid_history[(hist_idx + 1) % trend_slots]
+        if hist_count >= trend_slots:
+            # 读取环形缓冲区中最旧的值（即 trend_slots 个采样前的 mid），
+            # 该槽位马上就要被覆盖。
+            past_idx = (hist_idx + trend_slots) % trend_slots
+            past = mid_history[past_idx]
             trend = (mid - past) / past if past > 0 else np.nan
         else:
             trend = np.nan
+        mid_history[hist_idx] = mid
+        hist_count += 1
         hist_idx = (hist_idx + 1) % trend_slots
 
         out_ts[n] = ts
