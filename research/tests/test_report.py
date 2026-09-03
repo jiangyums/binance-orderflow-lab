@@ -23,6 +23,23 @@ def test_render_markdown_contains_tables():
     assert '最正分位命中' in md
 
 
+def test_render_markdown_per_trade_section():
+    ht = pd.DataFrame({'indicator': ['trade_ofi'], 'horizon_s': [5],
+                       'hit_rate': [0.6], 'n': [100], 'p_value': [0.02]})
+    st = pd.DataFrame({'indicator': ['trade_ofi'], 'horizon_s': [5], 'n_trades': [10],
+                       'win_rate': [0.5], 'cum_profit': [0.01],
+                       'max_drawdown': [-0.02], 'sharpe': [1.2]})
+    qt = pd.DataFrame({'indicator': ['trade_ofi'], 'horizon_s': [5],
+                       'neg_hit': [0.5], 'mid_hit': [0.5], 'pos_hit': [0.6],
+                       'neg_ret': [-1e-4], 'pos_ret': [1e-4],
+                       'n_neg': [100], 'n_pos': [100]})
+    per_trade = {'hit_rate': ht, 'quantile': qt, 'strategy': st}
+    md = report.render_markdown(ht, st, qt, per_trade=per_trade)
+    assert '逐笔事件驱动' in md
+    # 两组（每秒 + 逐笔）各渲染三节，trade_ofi 作为 indicator 值出现 6 次
+    assert md.count('trade_ofi') == 6
+
+
 def test_empty_input_pipeline_no_crash():
     empty = pd.DataFrame(columns=['timestamp', 'mid', 'obi', 'trade_ofi',
                                   'book_ofi', 'trend', 'bid_qty', 'ask_qty'])

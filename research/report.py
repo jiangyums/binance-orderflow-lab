@@ -7,19 +7,44 @@ from research import config
 
 def render_markdown(hit_rate_df: pd.DataFrame,
                     strategy_df: pd.DataFrame,
-                    quantile_df: pd.DataFrame = None) -> str:
+                    quantile_df: pd.DataFrame = None,
+                    per_trade: dict = None) -> str:
+    """Renders the research report.
+
+    per_trade: optional dict with 'hit_rate'/'quantile'/'strategy' DataFrames
+    for the event-driven (per-trade) sampling track. When provided, an
+    additional "逐笔事件驱动" section is appended.
+    """
     lines = []
     lines.append('# 订单流指标预测力研究报告')
     lines.append('')
+    _section_hit_rate(lines, hit_rate_df)
+    _section_quantile(lines, quantile_df)
+    _section_strategy(lines, strategy_df)
+
+    if per_trade is not None:
+        lines.append('# 逐笔事件驱动（每笔成交一行）')
+        lines.append('')
+        _section_hit_rate(lines, per_trade.get('hit_rate'))
+        _section_quantile(lines, per_trade.get('quantile'))
+        _section_strategy(lines, per_trade.get('strategy'))
+
+    return '\n'.join(lines)
+
+
+def _section_hit_rate(lines, hit_rate_df):
     lines.append('## 方向命中率')
     lines.append('')
-    if len(hit_rate_df):
+    if hit_rate_df is not None and len(hit_rate_df):
         t = hit_rate_df.copy()
         t['显著'] = t['p_value'] < config.SIGNIFICANCE_ALPHA
         lines.append(t.to_markdown(index=False))
     else:
         lines.append('（无样本）')
     lines.append('')
+
+
+def _section_quantile(lines, quantile_df):
     lines.append('## 极端分位命中率（20 等频桶）')
     lines.append('')
     if quantile_df is not None and len(quantile_df):
@@ -37,14 +62,16 @@ def render_markdown(hit_rate_df: pd.DataFrame,
     else:
         lines.append('（无样本）')
     lines.append('')
+
+
+def _section_strategy(lines, strategy_df):
     lines.append('## 简单开平仓策略（taker 0.05% 双边）')
     lines.append('')
-    if len(strategy_df):
+    if strategy_df is not None and len(strategy_df):
         lines.append(strategy_df.to_markdown(index=False))
     else:
         lines.append('（无交易）')
     lines.append('')
-    return '\n'.join(lines)
 
 
 def save_report(content: str, path: str):
