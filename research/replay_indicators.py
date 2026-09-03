@@ -126,7 +126,7 @@ def _level_delta(cur_px, cur_qty, cur_n, prev_px, prev_qty, prev_n):
 
 
 @njit
-def _sample(hbt, max_rows,
+def _sample(hbt, max_rows, per_trade,
             bid_px_buf, bid_qty_buf, ask_px_buf, ask_qty_buf,
             prev_bid_px, prev_bid_qty, prev_ask_px, prev_ask_qty,
             mid_history,
@@ -162,18 +162,18 @@ def _sample(hbt, max_rows,
         mid = (bid + ask) / 2.0
         obi = (bid_qty - ask_qty) / (bid_qty + ask_qty) if (bid_qty + ask_qty) > 0 else np.nan
 
-        # tradeOFI: 本秒成交聚合，保留绝对量（净买压 = Σ主动买 − Σ主动卖）
         trades = hbt.last_trades(0)
-        buy_vol = 0.0
-        sell_vol = 0.0
-        for i in range(len(trades)):
-            ev = trades[i]
-            if ev.ev & BUY_EVENT:
-                buy_vol += ev.qty
-            elif ev.ev & SELL_EVENT:
-                sell_vol += ev.qty
-        hbt.clear_last_trades(0)
-        tofi = buy_vol - sell_vol if (buy_vol + sell_vol) > 0 else np.nan
+        if not per_trade:
+            # 每秒聚合净买压（保留绝对量 = Σ主动买 − Σ主动卖）
+            buy_vol = 0.0
+            sell_vol = 0.0
+            for k in range(len(trades)):
+                ev = trades[k]
+                if ev.ev & BUY_EVENT:
+                    buy_vol += ev.qty
+                elif ev.ev & SELL_EVENT:
+                    sell_vol += ev.qty
+            tofi = buy_vol - sell_vol if (buy_vol + sell_vol) > 0 else np.nan
 
         # bookOFI: snapshot 前 N 档差分
         snap = depth.snapshot()
@@ -210,15 +210,33 @@ def _sample(hbt, max_rows,
         hist_count += 1
         hist_idx = (hist_idx + 1) % trend_slots
 
-        out_ts[n] = ts
-        out_mid[n] = mid
-        out_obi[n] = obi
-        out_tofi[n] = tofi
-        out_book_ofi[n] = book_ofi
-        out_trend[n] = trend
-        out_bid_qty[n] = bid_qty
-        out_ask_qty[n] = ask_qty
-        n += 1
+        if per_trade:
+            # 事件驱动：每笔成交一行，trade_ofi = 单笔 side*qty，时间戳 = 成交时刻
+            for k in range(len(trades)):
+                if n >= max_rows:
+                    return n
+                ev = trades[k]
+                out_ts[n] = ev.exch_ts
+                out_mid[n] = mid
+                out_obi[n] = obi
+                out_tofi[n] = ev.qty if (ev.ev & BUY_EVENT) else -ev.qty
+                out_book_ofi[n] = book_ofi
+                out_trend[n] = trend
+                out_bid_qty[n] = bid_qty
+                out_ask_qty[n] = ask_qty
+                n += 1
+        else:
+            out_ts[n] = ts
+            out_mid[n] = mid
+            out_obi[n] = obi
+            out_tofi[n] = tofi
+            out_book_ofi[n] = book_ofi
+            out_trend[n] = trend
+            out_bid_qty[n] = bid_qty
+            out_ask_qty[n] = ask_qty
+            n += 1
+
+        hbt.clear_last_trades(0)
         if n >= max_rows:
             break
         if hbt.elapse(interval) != 0:
@@ -226,15 +244,19 @@ def _sample(hbt, max_rows,
     return n
 
 
-def _run_sample(hbt):
+def _run_sample(hbt, per_trade=False, max_rows=1_000_000):
     """Allocates buffers, runs the shared njit sampling loop, returns DataFrame.
 
     Shared by the replay track (``HashMapMarketDepthBacktest``) and the live
     track (``HashMapMarketDepthLiveBot``); both expose the same
     depth()/last_trades()/clear_last_trades()/current_timestamp/elapse()
     interface with matching return codes (0=ok, 1=end-of-data/error).
+
+    per_trade=False: one row per second (trade_ofi = net taker volume).
+    per_trade=True:  one row per trade (trade_ofi = single trade side*qty,
+                     timestamp = trade exch_ts; book fields are the snapshot
+                     taken at the second boundary containing the trade).
     """
-    max_rows = 1_000_000
     bid_px_buf = np.empty(config.BOOK_OFI_LEVELS, np.float64)
     bid_qty_buf = np.empty(config.BOOK_OFI_LEVELS, np.float64)
     ask_px_buf = np.empty(config.BOOK_OFI_LEVELS, np.float64)
@@ -256,7 +278,7 @@ def _run_sample(hbt):
     out_ask_qty = np.empty(max_rows, np.float64)
 
     n = _sample(
-        hbt, max_rows,
+        hbt, max_rows, per_trade,
         bid_px_buf, bid_qty_buf, ask_px_buf, ask_qty_buf,
         prev_bid_px, prev_bid_qty, prev_ask_px, prev_ask_qty,
         mid_history,
@@ -281,3 +303,12 @@ def _run_sample(hbt):
 def replay_to_df(hbt):
     """Replays the backtest through the shared sampling loop; see _run_sample."""
     return _run_sample(hbt)
+
+
+def replay_per_trade_to_df(hbt):
+    """Event-driven replay: one row per trade (trade_ofi = single side*qty).
+
+    Timestamps are per-trade exch_ts; rows are non-uniform, so downstream
+    analysis resolves horizons by timestamp (see analyze.add_forward_returns).
+    """
+    return _run_sample(hbt, per_trade=True)

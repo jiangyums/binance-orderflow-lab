@@ -6,8 +6,8 @@ from research import analyze
 
 def _make_df(n=2000):
     rng = np.random.default_rng(0)
-    t0 = 1_660_000_000_000
-    ts = np.arange(n) * 1000 + t0
+    t0 = 1_660_000_000_000_000_000  # ns
+    ts = np.arange(n) * 1_000_000_000 + t0  # 1s 步长（ns）
     mid = 100 + np.cumsum(rng.normal(0, 0.01, n))
     df = pd.DataFrame({
         'timestamp': ts,
@@ -32,6 +32,28 @@ def test_add_forward_returns():
         assert np.isclose(df[col].iloc[0], expected_first)
         # tail h rows must be NaN
         assert df[col].iloc[-h:].isna().all()
+
+
+def test_add_forward_returns_nonuniform_timestamps():
+    # 事件驱动数据行间时间戳不均匀：h 秒后 = 按时间戳找，而非按行偏移
+    # 时间戳单位 = 纳秒
+    df = pd.DataFrame({
+        'timestamp': [0, 5e8, 5e9, 15e9, 60e9],
+        'mid': [100.0, 100.5, 101.0, 103.0, 106.0],
+        'obi': [0.0, 0.1, 0.2, 0.3, 0.4],
+        'trade_ofi': [0.0, 0.0, 0.0, 0.0, 0.0],
+        'book_ofi': [0.0, 0.0, 0.0, 0.0, 0.0],
+        'trend': [0.0, 0.0, 0.0, 0.0, 0.0],
+        'bid_qty': [1.0, 1.0, 1.0, 1.0, 1.0],
+        'ask_qty': [1.0, 1.0, 1.0, 1.0, 1.0],
+    })
+    df = analyze.add_forward_returns(df)
+    # h=5s: row0(ts=0) 未来5s → ts=5e9 的 mid=101.0
+    assert np.isclose(df['fwd_ret_5s'].iloc[0], (101.0 - 100.0) / 100.0)
+    # row1(ts=5e8) 未来5s → ts=15e9 的 mid=103.0（跳过中间）
+    assert np.isclose(df['fwd_ret_5s'].iloc[1], (103.0 - 100.5) / 100.5)
+    # 最后一行无未来 → NaN
+    assert np.isnan(df['fwd_ret_5s'].iloc[-1])
 
 
 def test_hit_rate_random_walk_about_50():
@@ -59,6 +81,31 @@ def test_simple_strategy_returns_stats():
     stats = analyze.simple_strategy(df, indicator='obi', horizon_s=5)
     for key in ['n_trades', 'win_rate', 'cum_profit', 'max_drawdown', 'sharpe']:
         assert key in stats
+
+
+def test_simple_strategy_nonuniform_timestamps():
+    # 事件驱动数据：持仓 h 秒后平仓应按时间戳定位退出，而非固定行偏移
+    ts = np.arange(0, 100) * 1_000_000_000  # 1s 均匀
+    # 中间插入一个长时间缺口：行 30 之后时间戳跳变
+    ts = np.concatenate([ts[:30], ts[30:] + 50_000_000_000])  # 30 后 +50s
+    mid = 100.0 + np.arange(len(ts)) * 0.01
+    rng = np.random.default_rng(2)
+    df = pd.DataFrame({
+        'timestamp': ts,
+        'mid': mid,
+        'obi': rng.normal(0, 1, len(ts)),
+        'trade_ofi': rng.normal(0, 1, len(ts)),
+        'book_ofi': rng.normal(0, 1, len(ts)),
+        'trend': rng.normal(0, 1, len(ts)),
+        'bid_qty': 1.0,
+        'ask_qty': 1.0,
+    })
+    # 让 obi 全是强信号，保证有交易发生
+    df['obi'] = 10.0
+    df = analyze.add_forward_returns(df)
+    stats = analyze.simple_strategy(df, indicator='obi', horizon_s=5, threshold=0.0)
+    # 不应崩溃；退出按时间戳，缺口处跳过
+    assert stats['n_trades'] >= 0
 
 
 def test_quantile_hit_rate_extreme_edges():

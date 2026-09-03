@@ -96,3 +96,19 @@ def test_deep_book_does_not_crash():
     df = replay_to_df(hbt)
     assert len(df) >= 2
     assert np.isclose(df['obi'].iloc[0], 0.0)  # symmetric 500/500 -> 0
+
+
+def test_per_trade_to_df_one_row_per_trade():
+    from research.replay_indicators import replay_per_trade_to_df
+    hbt = HashMapMarketDepthBacktest([_make_asset()])
+    df = replay_per_trade_to_df(hbt)
+    # 合成数据含 2 笔成交（5s 买 0.5、6s 卖 0.3）-> 2 行
+    assert len(df) == 2
+    # 每行 trade_ofi = 单笔 side*qty（事件驱动，非聚合）
+    assert np.isclose(df['trade_ofi'].iloc[0], 0.5)
+    assert np.isclose(df['trade_ofi'].iloc[1], -0.3)
+    # 时间戳为成交时刻
+    assert df['timestamp'].iloc[0] == 1_660_000_005_000_000_000
+    assert df['timestamp'].iloc[1] == 1_660_000_006_000_000_000
+    # mid 为采样时盘口快照
+    assert np.isclose(df['mid'].iloc[0], 24670.95)

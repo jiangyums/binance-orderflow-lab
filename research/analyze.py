@@ -6,16 +6,21 @@ from research import config
 
 HORIZONS_S = config.FUTURE_HORIZONS_S
 INDICATORS = ['obi', 'trade_ofi', 'book_ofi', 'trend']
+# 全管线时间戳统一为纳秒（binancefutures.convert 输出）
+NS_PER_SEC = 1_000_000_000
 
 
 def add_forward_returns(df: pd.DataFrame) -> pd.DataFrame:
     df = df.sort_values('timestamp').reset_index(drop=True)
     mids = df['mid'].to_numpy()
+    ts = df['timestamp'].to_numpy()
     for h in HORIZONS_S:
         col = f'fwd_ret_{h}s'
-        shifted = np.full(len(mids), np.nan)
-        shifted[:-h] = mids[h:]  # 数据 1s 间隔，h 秒 = h 行之后
-        df[col] = (shifted - mids) / mids
+        target = ts + h * NS_PER_SEC
+        idx = np.searchsorted(ts, target, side='left')
+        valid = idx < len(mids)
+        fut = np.where(valid, mids[np.minimum(idx, len(mids) - 1)], np.nan)
+        df[col] = (fut - mids) / mids
     return df
 
 
@@ -119,6 +124,7 @@ def simple_strategy(df, indicator, horizon_s,
                     cost=config.ROUND_TRIP_COST):
     df = df.sort_values('timestamp').reset_index(drop=True)
     col = df[indicator]
+    ts = df['timestamp'].to_numpy()
     z = (col - col.rolling(z_window_s, min_periods=z_window_s).mean()) / col.rolling(
         z_window_s, min_periods=z_window_s).std()
 
@@ -132,7 +138,9 @@ def simple_strategy(df, indicator, horizon_s,
             continue
         side = 1.0 if zi > 0 else -1.0
         entry = df['mid'].iloc[i]
-        j = i + horizon_s
+        # 退出：持仓 horizon_s 秒后，按时间戳定位（事件数据行间隔不均匀）
+        exit_ts = ts[i] + horizon_s * NS_PER_SEC
+        j = np.searchsorted(ts, exit_ts, side='left')
         if j >= n:
             break
         exit_ = df['mid'].iloc[j]
