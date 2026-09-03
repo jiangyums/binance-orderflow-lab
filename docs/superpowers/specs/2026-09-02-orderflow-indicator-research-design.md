@@ -56,11 +56,12 @@ hftbacktest Rust collector（binancefuturesum）实时采集 → npz
 binance-orderflow-lab/
 ├── research/                    # 新增【阶段 A】Python 实验
 │   ├── config.py                # symbol/日期范围/采样频率/预测窗口/费率/路径
-│   ├── prepare_data.py          # data.binance.vision 下载 → 转 hftbacktest npz
+│   ├── prepare_data.py          # collector 录制(.gz) → binancefutures.convert → npz
 │   ├── replay_indicators.py     # hftbacktest Backtest 回放，1s 采样四指标
+│   ├── live_indicators.py       # Python LiveBot 实时流采样（同一套指标口径）
 │   ├── analyze.py               # 命中率 / 分位数 / 简单开平仓统计
 │   ├── report.py                # report.md + CSV + 图表
-│   ├── run.py                   # 主入口：prepare → replay → analyze → report
+│   ├── run.py                   # 回放主入口：prepare → replay → analyze → report
 │   └── tests/                   # 合成数据单测 + 随机游走 sanity check
 ├── rust/                        # 新增【阶段 B】Rust 实现（Cargo crate）
 │   ├── Cargo.toml               # 依赖 hftbacktest crate
@@ -71,12 +72,23 @@ binance-orderflow-lab/
 └── docs/superpowers/            # 设计文档（Go 重构设计标记 superseded）
 ```
 
-## 5. 数据管线
+## 5. 数据管线（双轨，2026-09-03 修订）
 
-- **研究阶段**：从 data.binance.vision 下载近 1–2 周（默认 7 天）BTCUSDT USD-M 数据包
-  （`aggTrades` + `bookDepth`），用 `hftbacktest.data.utils.binancehistmktdata.convert`
-  转成 hftbacktest 兼容 npz，补初始快照（`DEPTH_SNAPSHOT`），`validate_event_order` 校验事件顺序。
-- **生产阶段**：hftbacktest Rust `collector` crate 的 `binancefuturesum` 实时采集，直接写 npz。
+**修订背景**：实测发现 data.binance.vision 无逐档深度流（`bookDepth` 实为分钟级统计、
+`bookTicker` 2024-03 后停更、无 `depth` 增量类别），无法支撑 1s 级 bookOFI/OBI。
+数据源改为 hftbacktest 自建采集，形成回放/实时双轨：
+
+- **回放轨（历史研究）**：hftbacktest Rust `collector`（`binancefuturesum`）实时录制
+  Binance WS（depth@0ms + trade），写 `data/rec/{symbol}_{YYYYMMDD}.gz`（组合流原始消息）。
+  `prepare_data.prepare_day` 经 `hftbacktest.data.utils.binancefutures.convert` 转 npz
+  （时间戳单位为纳秒），`replay_indicators.replay_to_df` 回放采样。
+  当天未完成的录制用 gzip 前缀恢复（`_recover_gzip`）读取，跨天文件直接转换。
+- **实时轨（实时流）**：`connector` 进程（Binance WS → iceoryx2 共享内存）+
+  **Python LiveBot**（需以 `--features live` 重编译 py-hftbacktest，PyPI 版未含）。
+  `live_indicators.py` 用与回放完全相同的 njit 采样循环读 `depth()`/`last_trades()`，
+  指标口径 1:1 一致；与回放轨互为校验。
+  - **Windows/iceoryx2 约束**：connector 与 Python LiveBot 必须同机运行。
+- **时间戳单位**：全管线统一纳秒（`SAMPLE_INTERVAL_NS = 1_000_000_000`，即 1s）。
 - 缺失日期记 gap，报告中注明。
 
 ## 6. 指标定义（hftbacktest 回放内实现，1 秒采样）
@@ -111,21 +123,24 @@ binance-orderflow-lab/
 
 ## 8. 与 hftbacktest 的接口边界
 
-| 阶段 | 调用方式 | 使用接口 |
+| 轨道 | 调用方式 | 使用接口 |
 |---|---|---|
-| 阶段 A | Python 绑定 | `BacktestAsset`、`HashMapMarketDepthBacktest`、`BUY/SELL/GTX/LIMIT`、`Bot`（`elapse`/`depth`/`last_trades`/`position`）、`hftbacktest.data.utils.binancehistmktdata` |
-| 阶段 B | Rust API | `L2AssetBuilder`、`Backtest`、`HashMapMarketDepth`、`Bot` trait、`collector` crate |
+| 回放轨（阶段 A） | Python 绑定 | `BacktestAsset`、`HashMapMarketDepthBacktest`、`BUY/SELL/GTX/LIMIT`、`Bot`（`elapse`/`depth`/`last_trades`）、`hftbacktest.data.utils.binancefutures`、Rust `collector` crate |
+| 实时轨（2026-09-03 增） | Python 绑定（live feature） | `LiveInstrument`、`HashMapMarketDepthLiveBot`（与回放侧同一套 `depth()`/`last_trades()`/`elapse()` 接口）、Rust `connector` crate（iceoryx2） |
+| 阶段 B | Rust API | `L2AssetBuilder`、`Backtest`、`HashMapMarketDepth`、`Bot` trait |
 
 不 import hftbacktest 私有模块、不改动其源码；接口缺失或 bug 在 hftbacktest 仓库提 issue/PR。
+例外：py-hftbacktest 的 live feature 未随 PyPI 发布，需以 `maturin build --release --features live`
+本地编译安装（不改源码，仅启用官方编译开关）。
 
 ## 9. 工程性与验证
 
-- `prepare_data.py` 下载后校验 zip 完整性；缺失日期记 gap。
+- 当天未完成录制经 `_recover_gzip`（行级校验的前缀恢复）读取；跨天文件直接转换；缺失日期记 gap。
 - `research/tests/`：合成小数据集断言四指标与手算值一致；随机游走 sanity check（命中率≈50%）。
-- 阶段 B 与阶段 A 用**相同口径报表**做交叉验证（数值一致性检查）。
-- 参数集中在 `research/config.py`；`python -m research.run --start --end` 指定日期。
-- 迁移契约：`replay_indicators.py` 输出固定秒级 schema
-  （timestamp, mid, obi, trade_ofi, book_ofi, trend, bid_qty, ask_qty），阶段 B Rust 按同一 schema 输出 CSV。
+- 实时轨与回放轨用**相同口径**互为校验（同一时段指标数值一致性抽查）。
+- 参数集中在 `research/config.py`；`python -m research.run --start --end` 指定回放日期。
+- 迁移契约：采样输出固定秒级 schema
+  （timestamp, mid, obi, trade_ofi, book_ofi, trend, bid_qty, ask_qty），回放/实时/阶段 B 三者一致。
 
 ## 10. 输出
 
@@ -140,7 +155,11 @@ binance-orderflow-lab/
 
 ## 12. 未知项与风险
 
-- data.binance.vision 各数据包 CSV 确切字段名 / 单位 / 时间戳格式未核实，实现第一步须下载样例验证。
-- `bookDepth` 极端行情可能缺失个别帧，导致 bookOFI 差分失真（用前一个有效帧代替，报告注明 gap）。
+- collector 录制为增量深度流（无 REST 快照），回放初期订单簿从空构建，深层档位可能缺失；
+  前 20 档更新频繁影响有限，报告注明 warm-up。
+- 当天在写文件的 gzip 恢复可能丢失最后几条 in-flight 消息（研究可接受）。
 - 历史数据回放无撮合滑点，简单策略成交假设（taker 按当前盘口成交）偏理想化。
-- 阶段 B 的 hftbacktest Rust `collector` 对 Binance USD-M 的深度管理当前仅支持自然刷新（见 hftbacktest #300 issue），实时采集的订单簿精度以 BBO 为主。
+- hftbacktest Rust `connector` 对 Binance USD-M 的深度管理当前仅支持自然刷新（见 hftbacktest #300 issue），
+  实时轨订单簿精度以 BBO 为主；**与 collector 轨一致**，双轨口径不受影响。
+- iceoryx2/Windows 的长期稳定性待观察（官方支持 Windows，但本项目未长跑验证）。
+- py-hftbacktest 升版需重编译 live feature。
