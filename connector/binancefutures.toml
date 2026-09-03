@@ -1,0 +1,5 @@
+stream_url = "wss://fstream.binance.com/ws"
+api_url = "https://fapi.binance.com"
+order_prefix = "research"
+api_key = ""
+secret = ""
