@@ -43,12 +43,12 @@ def main():
 
     os.makedirs(config.RESULTS_DIR, exist_ok=True)
 
-    hbt = build_hbt(feeds, snapshots)
-
     md_parts = []
     per_trade = None
 
     if args.mode in ('second', 'both'):
+        # 回放对象一次性，各模式需独立实例
+        hbt = build_hbt(feeds, snapshots)
         df = replay_to_df(hbt)
         res = _analyze(df)
         for k in ('hit_rate', 'quantile', 'strategy'):
@@ -57,7 +57,8 @@ def main():
         md_parts.append(report.render_markdown(res['hit_rate'], res['strategy'], res['quantile']))
 
     if args.mode in ('per_trade', 'both'):
-        df_pt = replay_per_trade_to_df(hbt)
+        hbt_pt = build_hbt(feeds, snapshots)
+        df_pt = replay_per_trade_to_df(hbt_pt)
         res_pt = _analyze(df_pt)
         for k in ('hit_rate', 'quantile', 'strategy'):
             res_pt[k].to_csv(os.path.join(config.RESULTS_DIR, f'{k}_per_trade.csv'), index=False)
