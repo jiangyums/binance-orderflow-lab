@@ -32,6 +32,9 @@ def _make_asset():
     events.append(_event(TRADE_EVENT | LOCAL_EVENT | BUY_EVENT, ts0 + 5 * SEC, 24670.9, 0.5))
     # 一笔主动卖成交在 ts0+6s
     events.append(_event(TRADE_EVENT | LOCAL_EVENT | SELL_EVENT, ts0 + 6 * SEC, 24671.0, 0.3))
+    # 尾部深度事件：保证 6s 网格被采样到（否则最后一个网格会因 EndOfData 跳过）
+    events.append(_event(DEPTH_EVENT | LOCAL_EVENT | BUY_EVENT, ts0 + 7 * SEC, 24670.9, 2.8))
+    events.append(_event(DEPTH_EVENT | LOCAL_EVENT | SELL_EVENT, ts0 + 7 * SEC, 24671.0, 1.2))
 
     data = np.array(sorted(events, key=lambda e: e[1]), dtype=event_dtype)
     asset = (
@@ -65,10 +68,14 @@ def test_replay_produces_rows():
 def test_trade_ofi_bucket():
     hbt = HashMapMarketDepthBacktest([_make_asset()])
     df = replay_to_df(hbt)
-    # 5s 那一秒出现主动买 0.5 -> trade_ofi=+1.0（仅一笔买）
+    # 5s 那一秒出现主动买 0.5 -> trade_ofi=+0.5（绝对净量，非归一化）
     row5 = df[df['timestamp'] == 1_660_000_005_000_000_000]
     assert len(row5) == 1
-    assert np.isclose(row5['trade_ofi'].iloc[0], 1.0)
+    assert np.isclose(row5['trade_ofi'].iloc[0], 0.5)
+    # 6s 那一秒出现主动卖 0.3 -> trade_ofi=-0.3
+    row6 = df[df['timestamp'] == 1_660_000_006_000_000_000]
+    assert len(row6) == 1
+    assert np.isclose(row6['trade_ofi'].iloc[0], -0.3)
 
 
 def test_deep_book_does_not_crash():

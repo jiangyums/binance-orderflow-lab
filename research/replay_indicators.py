@@ -162,7 +162,7 @@ def _sample(hbt, max_rows,
         mid = (bid + ask) / 2.0
         obi = (bid_qty - ask_qty) / (bid_qty + ask_qty) if (bid_qty + ask_qty) > 0 else np.nan
 
-        # tradeOFI: 本秒成交聚合
+        # tradeOFI: 本秒成交聚合，保留绝对量（净买压 = Σ主动买 − Σ主动卖）
         trades = hbt.last_trades(0)
         buy_vol = 0.0
         sell_vol = 0.0
@@ -173,7 +173,7 @@ def _sample(hbt, max_rows,
             elif ev.ev & SELL_EVENT:
                 sell_vol += ev.qty
         hbt.clear_last_trades(0)
-        tofi = (buy_vol - sell_vol) / (buy_vol + sell_vol) if (buy_vol + sell_vol) > 0 else np.nan
+        tofi = buy_vol - sell_vol if (buy_vol + sell_vol) > 0 else np.nan
 
         # bookOFI: snapshot 前 N 档差分
         snap = depth.snapshot()
