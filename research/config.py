@@ -21,6 +21,7 @@ Z_THRESHOLD = 1.5
 # 统计分析参数
 DROP_SMALL_ABS_FRAC = 0.10     # hit-rate 中剔除 |indicator| 过小样本的分位阈值
 SECONDS_PER_DAY = 86_400       # 秒/天，用于 Sharpe 近似
+SIGNIFICANCE_ALPHA = 0.05      # hit-rate 显著性检验阈值
 
 # 数据
 DATA_DIR = 'data'

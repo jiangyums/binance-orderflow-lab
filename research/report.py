@@ -2,6 +2,8 @@ import os
 
 import pandas as pd
 
+from research import config
+
 
 def render_markdown(hit_rate_df: pd.DataFrame, strategy_df: pd.DataFrame) -> str:
     lines = []
@@ -11,7 +13,7 @@ def render_markdown(hit_rate_df: pd.DataFrame, strategy_df: pd.DataFrame) -> str
     lines.append('')
     if len(hit_rate_df):
         t = hit_rate_df.copy()
-        t['显著'] = t['p_value'] < 0.05
+        t['显著'] = t['p_value'] < config.SIGNIFICANCE_ALPHA
         lines.append(t.to_markdown(index=False))
     else:
         lines.append('（无样本）')

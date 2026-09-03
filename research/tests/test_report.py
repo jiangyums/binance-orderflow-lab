@@ -3,7 +3,7 @@ import tempfile
 
 import pandas as pd
 
-from research import report
+from research import analyze, report
 
 
 def test_render_markdown_contains_tables():
@@ -15,6 +15,20 @@ def test_render_markdown_contains_tables():
     md = report.render_markdown(ht, st)
     assert '# 订单流指标预测力研究报告' in md
     assert '命中率' in md and '简单开平仓策略' in md
+
+
+def test_empty_input_pipeline_no_crash():
+    empty = pd.DataFrame(columns=['timestamp', 'mid', 'obi', 'trade_ofi',
+                                  'book_ofi', 'trend', 'bid_qty', 'ask_qty'])
+    empty = analyze.add_forward_returns(empty)
+    ht = analyze.hit_rate_table(empty)
+    st = analyze.strategy_table(empty)
+    md = report.render_markdown(ht, st)
+    assert len(ht) == 12 and (ht['n'] == 0).all()
+    assert ht['p_value'].isna().all()
+    assert len(st) == 12 and (st['n_trades'] == 0).all()
+    assert '# 订单流指标预测力研究报告' in md
+    assert 'obi' in md
 
 
 def test_save_report_writes_file():

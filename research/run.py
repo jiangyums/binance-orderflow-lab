@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 
 from research import analyze, config, prepare_data, report
 from research.replay_indicators import build_hbt, replay_to_df
@@ -24,6 +25,11 @@ def main():
     feeds = [d['feed'] for d in days if os.path.exists(d['feed'])]
     snapshots = [d['snapshot'] for d in days if d['snapshot'] and os.path.exists(d['snapshot'])]
 
+    if not feeds:
+        raise SystemExit(
+            'no feed data found; run without --no-download, or check data/hist/ cache'
+        )
+
     hbt = build_hbt(feeds, snapshots)
     df = replay_to_df(hbt)
     df = analyze.add_forward_returns(df)
@@ -38,6 +44,11 @@ def main():
 
     md = report.render_markdown(ht, st)
     report.save_report(md, os.path.join(config.RESULTS_DIR, 'report.md'))
+
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except (AttributeError, ValueError):
+        pass
     print(md)
 
 

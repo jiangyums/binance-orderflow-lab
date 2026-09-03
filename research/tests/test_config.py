@@ -10,3 +10,4 @@ def test_config_values():
     assert config.BOOK_OFI_LEVELS == 20
     assert config.DROP_SMALL_ABS_FRAC == 0.10
     assert config.SECONDS_PER_DAY == 86_400
+    assert config.SIGNIFICANCE_ALPHA == 0.05
