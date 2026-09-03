@@ -41,6 +41,19 @@ def test_hit_rate_random_walk_about_50():
     assert hr['n'] > 1000
 
 
+def test_hit_rate_excludes_zero_return_ties():
+    # 平局剔除：fwd_ret == 0 的样本不应计入 n
+    df = _make_df()
+    df.loc[500:800, 'mid'] = 500.0
+    df = analyze.add_forward_returns(df)  # 改 mid 后重算 fwd_ret
+    hr = analyze.hit_rate(df, indicator='obi', horizon_s=5)
+    df_ref = analyze.add_forward_returns(_make_df())
+    hr_ref = analyze.hit_rate(df_ref, indicator='obi', horizon_s=5)
+    # 平局区间 296 行被剔除而非计为 miss
+    assert hr['n'] < hr_ref['n']
+    assert hr_ref['n'] - hr['n'] > 200
+
+
 def test_simple_strategy_returns_stats():
     df = analyze.add_forward_returns(_make_df())
     stats = analyze.simple_strategy(df, indicator='obi', horizon_s=5)

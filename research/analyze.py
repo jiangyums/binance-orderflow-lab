@@ -26,6 +26,8 @@ def _drop_small_abs(df, indicator, frac=config.DROP_SMALL_ABS_FRAC):
 
 def hit_rate(df, indicator, horizon_s):
     sub = _drop_small_abs(df.dropna(subset=[indicator, f'fwd_ret_{horizon_s}s']), indicator)
+    # 剔除平局样本：价格未动（ret == 0）时无方向可命中，不应计入 miss
+    sub = sub[sub[f'fwd_ret_{horizon_s}s'] != 0]
     if len(sub) == 0:
         return {'indicator': indicator, 'horizon_s': horizon_s,
                 'hit_rate': np.nan, 'n': 0, 'p_value': np.nan}
