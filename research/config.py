@@ -1,8 +1,14 @@
 SYMBOL = 'btcusdt'
 
-# data.binance.vision 时间戳单位 = 毫秒
-SAMPLE_INTERVAL_MS = 1000      # 1s 采样
+# 数据时间戳单位 = 纳秒（binancefutures.convert: transaction_time(ms) * 1_000_000）
+SAMPLE_INTERVAL_MS = 1000      # 1s 采样（毫秒语义，供分析层文档使用）
+SAMPLE_INTERVAL_NS = SAMPLE_INTERVAL_MS * 1_000_000   # elapse 用：与数据单位一致
 TREND_WINDOW_MS = 60_000       # 60s 趋势窗口
+TREND_WINDOW_NS = TREND_WINDOW_MS * 1_000_000
+
+# 默认研究日期范围（近 1 周；数据来自 data/rec/ 下的 collector 录制）
+START_DATE = '2026-09-03'
+END_DATE = '2026-09-03'
 
 FUTURE_HORIZONS_S = [5, 15, 60]
 HORIZONS_MS = [h * 1000 for h in FUTURE_HORIZONS_S]
@@ -27,7 +33,3 @@ SIGNIFICANCE_ALPHA = 0.05      # hit-rate 显著性检验阈值
 DATA_DIR = 'data'
 RESULTS_DIR = 'research/results'
 CACHE_DIR = 'data/hist'
-
-# 默认研究日期范围（近 1 周）
-START_DATE = '2026-08-26'
-END_DATE = '2026-09-01'

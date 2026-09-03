@@ -39,7 +39,7 @@ def build_hbt(feed, snapshot=None, tick_size=0.1, lot_size=0.001):
 
 @njit
 def _extract_top(snapshot, is_bid, max_levels, out_px, out_qty):
-    """从 depth.snapshot() 流式提取前 max_levels 档（按价格排序），不越界。
+    """从 depth.snapshot() 流式提取前 max_levels 档（按价格排序，不越界）。
 
     out_px[0:count] 始终保持有序：bid 按价格降序，ask 按价格升序。
     只写入下标 0..max_levels-1，永远不会越界。
@@ -50,14 +50,12 @@ def _extract_top(snapshot, is_bid, max_levels, out_px, out_qty):
         if is_bid:
             if (ev.ev & BUY_EVENT) == 0:
                 continue
-            # bid：价格越高越靠前
         else:
             if (ev.ev & SELL_EVENT) == 0:
                 continue
-            # ask：价格越低越靠前
 
         if count == max_levels:
-            # 数组已满：只有优于最差档（或与其同价）才插入并剔除最差档
+            # 数组已满：只有优于最差档（或与其同价）才插入并剔除最差档。
             worst = out_px[max_levels - 1]
             if is_bid:
                 better = ev.px > worst
@@ -141,14 +139,14 @@ def _sample(hbt, max_rows,
     prev_ask_n = 0
     hist_idx = 0
     hist_count = 0
-    trend_slots = int(config.TREND_WINDOW_MS / config.SAMPLE_INTERVAL_MS)
+    trend_slots = int(config.TREND_WINDOW_NS / config.SAMPLE_INTERVAL_NS)
     have_prev = False
 
-    # 初始化游标到首个事件时间戳，并对齐到 SAMPLE_INTERVAL_MS 网格，
+    # 初始化游标到首个事件时间戳，并对齐到采样网格，
     # 避免数据起点偏移导致采样时间戳错位。
     if hbt.elapse(0) != 0:
         return n
-    interval = config.SAMPLE_INTERVAL_MS
+    interval = config.SAMPLE_INTERVAL_NS
     target = ((hbt.current_timestamp + interval - 1) // interval) * interval
     if hbt.elapse(target - hbt.current_timestamp) != 0:
         return n
@@ -181,7 +179,7 @@ def _sample(hbt, max_rows,
         snap = depth.snapshot()
         cur_bid_n = _extract_top(snap, True, max_levels, bid_px_buf, bid_qty_buf)
         cur_ask_n = _extract_top(snap, False, max_levels, ask_px_buf, ask_qty_buf)
-        # Rust 端 snapshot() 分配的内存必须手动释放，否则每秒泄漏 ~0.65MB
+        # Rust 端 snapshot() 分配的内存必须手动释放，否则每秒泄漏约 0.65MB
         depth.snapshot_free(snap)
         if have_prev:
             db = _level_delta(bid_px_buf, bid_qty_buf, cur_bid_n, prev_bid_px, prev_bid_qty, prev_bid_n)
@@ -201,7 +199,7 @@ def _sample(hbt, max_rows,
 
         # trend: 60s 前 mid
         if hist_count >= trend_slots:
-            # 读取环形缓冲区中最旧的值（即 trend_slots 个采样前的 mid），
+            # 读取环形缓存中最旧的值（即 trend_slots 个采样前的 mid），
             # 该槽位马上就要被覆盖。
             past_idx = (hist_idx + trend_slots) % trend_slots
             past = mid_history[past_idx]
@@ -238,7 +236,7 @@ def replay_to_df(hbt):
     prev_bid_qty = np.empty(config.BOOK_OFI_LEVELS, np.float64)
     prev_ask_px = np.empty(config.BOOK_OFI_LEVELS, np.float64)
     prev_ask_qty = np.empty(config.BOOK_OFI_LEVELS, np.float64)
-    trend_slots = int(config.TREND_WINDOW_MS / config.SAMPLE_INTERVAL_MS)
+    trend_slots = int(config.TREND_WINDOW_NS / config.SAMPLE_INTERVAL_NS)
     mid_history = np.zeros(trend_slots, np.float64)
 
     out_ts = np.empty(max_rows, np.int64)
