@@ -59,3 +59,28 @@ def test_simple_strategy_returns_stats():
     stats = analyze.simple_strategy(df, indicator='obi', horizon_s=5)
     for key in ['n_trades', 'win_rate', 'cum_profit', 'max_drawdown', 'sharpe']:
         assert key in stats
+
+
+def test_quantile_hit_rate_extreme_edges():
+    # 强相关 + 噪声：极端分位（大 |指标| -> 大 |ret|）命中应高于中间分位
+    df = analyze.add_forward_returns(_make_df())
+    rng = np.random.default_rng(1)
+    df['obi'] = df['fwd_ret_5s'] * 1e4 + rng.normal(0, 1.0, len(df))
+    qt = analyze.quantile_hit_rate(df, indicator='obi', horizon_s=5, q=5)
+    assert len(qt) == 5
+    assert set(qt.columns) >= {'bucket', 'n', 'hit_rate', 'mean_ret'}
+    qt = qt.sort_values('bucket').reset_index(drop=True)
+    neg = qt.iloc[0]
+    pos = qt.iloc[-1]
+    mid = qt.iloc[len(qt) // 2]
+    # 极端桶（强信号）命中应显著 > 中间桶（噪声主导）
+    assert pos['hit_rate'] > mid['hit_rate']
+    assert neg['hit_rate'] > mid['hit_rate']
+
+
+def test_quantile_hit_table_shape():
+    df = analyze.add_forward_returns(_make_df())
+    tbl = analyze.quantile_hit_table(df, q=5)
+    assert len(tbl) == len(analyze.INDICATORS) * len(analyze.HORIZONS_S)
+    assert {'indicator', 'horizon_s', 'neg_hit', 'mid_hit', 'pos_hit',
+            'neg_ret', 'pos_ret', 'n_neg', 'n_pos'} <= set(tbl.columns)

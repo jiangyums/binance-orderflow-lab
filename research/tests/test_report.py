@@ -12,9 +12,15 @@ def test_render_markdown_contains_tables():
     st = pd.DataFrame({'indicator': ['obi'], 'horizon_s': [5], 'n_trades': [10],
                        'win_rate': [0.5], 'cum_profit': [0.01],
                        'max_drawdown': [-0.02], 'sharpe': [1.2]})
-    md = report.render_markdown(ht, st)
+    qt = pd.DataFrame({'indicator': ['obi'], 'horizon_s': [5],
+                       'neg_hit': [0.5], 'mid_hit': [0.5], 'pos_hit': [0.6],
+                       'neg_ret': [-1e-4], 'pos_ret': [1e-4],
+                       'n_neg': [100], 'n_pos': [100]})
+    md = report.render_markdown(ht, st, qt)
     assert '# 订单流指标预测力研究报告' in md
     assert '命中率' in md and '简单开平仓策略' in md
+    assert '极端分位命中率' in md
+    assert '最正分位命中' in md
 
 
 def test_empty_input_pipeline_no_crash():

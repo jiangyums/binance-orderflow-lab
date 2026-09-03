@@ -11,7 +11,7 @@ def main():
     parser.add_argument('--start', default=config.START_DATE)
     parser.add_argument('--end', default=config.END_DATE)
     parser.add_argument('--no-download', action='store_true',
-                        help='跳过下载，使用已有缓存')
+                        help='skip download, use cached feed.npz')
     args = parser.parse_args()
 
     if args.no_download:
@@ -35,14 +35,16 @@ def main():
     df = analyze.add_forward_returns(df)
 
     ht = analyze.hit_rate_table(df)
+    qt = analyze.quantile_hit_table(df)
     st = analyze.strategy_table(df)
 
     os.makedirs(config.RESULTS_DIR, exist_ok=True)
     ht.to_csv(os.path.join(config.RESULTS_DIR, 'hit_rate.csv'), index=False)
+    qt.to_csv(os.path.join(config.RESULTS_DIR, 'quantile_hit.csv'), index=False)
     st.to_csv(os.path.join(config.RESULTS_DIR, 'strategy.csv'), index=False)
     df.to_csv(os.path.join(config.RESULTS_DIR, 'indicators.csv'), index=False)
 
-    md = report.render_markdown(ht, st)
+    md = report.render_markdown(ht, st, qt)
     report.save_report(md, os.path.join(config.RESULTS_DIR, 'report.md'))
 
     try:

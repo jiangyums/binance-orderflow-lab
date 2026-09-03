@@ -61,6 +61,58 @@ def quantile_groups(df, indicator, horizon_s, q=5):
     return pd.DataFrame(rows)
 
 
+def quantile_hit_rate(df, indicator, horizon_s, q=20):
+    """逐分位命中率：把指标按值等频分 q 桶，算每桶方向命中率与平均收益。
+
+    与 hit_rate 同口径：剔除 NaN 与平局样本（ret == 0）。返回列：
+    bucket / n / hit_rate / mean_ret。
+    """
+    sub = df.dropna(subset=[indicator, f'fwd_ret_{horizon_s}s']).copy()
+    sub = sub[sub[f'fwd_ret_{horizon_s}s'] != 0]
+    if len(sub) == 0:
+        return pd.DataFrame(columns=['bucket', 'n', 'hit_rate', 'mean_ret'])
+    sub['bucket'] = pd.qcut(sub[indicator], q, labels=False, duplicates='drop')
+    rows = []
+    for b, g in sub.groupby('bucket'):
+        sm = (np.sign(g[indicator].to_numpy()) == np.sign(g[f'fwd_ret_{horizon_s}s'].to_numpy())).mean()
+        rows.append({
+            'bucket': int(b),
+            'n': len(g),
+            'hit_rate': sm,
+            'mean_ret': g[f'fwd_ret_{horizon_s}s'].mean(),
+        })
+    return pd.DataFrame(rows)
+
+
+def quantile_hit_table(df, q=20) -> pd.DataFrame:
+    """极端分位汇总表：每指标 x 窗口的 最负 / 中间 / 最正 分位命中率与收益。
+
+    返回列：indicator / horizon_s / neg_hit / mid_hit / pos_hit /
+    neg_ret / pos_ret / n_neg / n_pos。
+    """
+    rows = []
+    for ind in INDICATORS:
+        for h in HORIZONS_S:
+            qt = quantile_hit_rate(df, ind, h, q=q)
+            if len(qt) == 0:
+                rows.append({'indicator': ind, 'horizon_s': h,
+                             'neg_hit': np.nan, 'mid_hit': np.nan, 'pos_hit': np.nan,
+                             'neg_ret': np.nan, 'pos_ret': np.nan,
+                             'n_neg': 0, 'n_pos': 0})
+                continue
+            qt = qt.sort_values('bucket').reset_index(drop=True)
+            neg = qt.iloc[0]
+            mid = qt.iloc[len(qt) // 2]
+            pos = qt.iloc[-1]
+            rows.append({
+                'indicator': ind, 'horizon_s': h,
+                'neg_hit': neg['hit_rate'], 'mid_hit': mid['hit_rate'], 'pos_hit': pos['hit_rate'],
+                'neg_ret': neg['mean_ret'], 'pos_ret': pos['mean_ret'],
+                'n_neg': int(neg['n']), 'n_pos': int(pos['n']),
+            })
+    return pd.DataFrame(rows)
+
+
 def simple_strategy(df, indicator, horizon_s,
                     z_window_s=config.Z_WINDOW_S,
                     threshold=config.Z_THRESHOLD,
