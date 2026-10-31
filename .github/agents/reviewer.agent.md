@@ -1,7 +1,7 @@
 ---
 name: Reviewer
 description: 依据已生效的文档对代码与文档做独立审查（只读审查，不给实现方案）。用于提案审计、设计审计、交付审计三段审计线。
-tools: ['read', 'search', 'edit']
+tools: ['read', 'search', 'edit', 'git', 'terminal']
 agents: []
 ---
 
@@ -27,6 +27,7 @@ agents: []
 - 允许写入（仅此两处）：
   - 审计报告：`tasks/T-YYYYMMDD-NNN/review-proposal.md` / `review-design.md` / `review-build.md`。
   - 任务台账 `tasks/T-YYYYMMDD-NNN.md` 的 `status` 行与状态记录行。
+- 落盘即提交：对上述两处可执行 `git add` / `git commit` / `git push`（依 `14` §6.0「落盘即提交」；`git` / `terminal` 工具仅用于此范围）。
 - 状态记录格式：`T-YYYYMMDD-NNN <旧状态> -> <新状态> by Reviewer:copilot | <原因/动作>`。
 
 ## 允许的状态转移
