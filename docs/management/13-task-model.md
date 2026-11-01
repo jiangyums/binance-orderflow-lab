@@ -361,7 +361,7 @@ PM 根据审计、测试的结论进行审批。
 
 ### 6.3 其他说明
 
-- Architect 产出一律**直接落盘到最终载体**；在 `Drafting proposal` 阶段，文件直接落到 `tasks/T-XXXX/proposal.md`，不经过“状态标注”环节。
+- Architect 产出一律**直接落盘到最终载体**；在正式化之前的对话讨论阶段（任务尚未置 `proposed`），讨论不落盘任何文件；置 `proposed` 时，文件落盘到 `tasks/T-XXXX/proposal.md`，不经过“状态标注”环节。
 - Reviewer 审计上述全部产物（提案、设计、代码与代码相关文档），产出对应审计报告。
 - Tester 测试代码，产出测试方案、测试代码与测试报告。
 - PM 审批**每一份**审计报告与测试报告；审批结论和状态转移记录在任务台账的状态记录行中。
@@ -376,11 +376,11 @@ PM 根据审计、测试的结论进行审批。
 1. 用户与架构师讨论需求，架构师认为该需求有存在的意义、且未被现有其他项目满足；
 2. 架构师在进行技术方案 / 实现方案设计时，认为应将现有项目分解为若干子任务。
 
-两种场景下，任务在正式化之前处于**隐藏状态 `Drafting proposal`（提案中）**：架构师与用户讨论项目提案 / 需求说明。**该阶段的草案直接落盘到最终载体** `tasks/T-XXXX/proposal.md`，**不在文件内标注任何状态或 `revision`**；用户明确同意提案后，架构师将状态置为 `proposed`，下一流程进入提案审计（`proposed → proposed-reviewed`）。**不设草稿专用目录**（见 §6.1）。
+用户下达创建任务且架构师确认已理解需求时，架构师在同一轮内创建任务台账 `tasks/T-XXXX.md` 与提案 `tasks/T-XXXX/proposal.md`，并将状态置为 `proposed`；两者同轮落盘，不设草稿专用目录或草稿专用态。正式化之前的对话讨论不落盘任何文件。
 
-架构师与用户确认提案后，将状态置为 `proposed`，下一流程进入提案审计（`proposed → proposed-reviewed`）。用户对提案的确认属于 Architect 的内部工作规范，不进入 PM / Reviewer 的审批链路，PM 不对该环节出具审批结论。
+用户对提案的确认属于 Architect 的内部工作规范，不进入 PM / Reviewer 的审批链路，不在任务台账中设置单独核对项。
 
-> `proposed` 状态的提交人是 **Architect**（在用户确认提案后置位）；**审批人**为 **PM**，在 `proposed-reviewed` 之后依据 Reviewer 的审计报告进行四态审批。用户对提案的确认属于 Architect 的内部工作规范，不作为 PM / Reviewer 的检查环节，也不在任务台账中设置单独核对项。
+> `proposed` 状态的提交人是 **Architect**（用户确认提案后置位）；**审批人**为 **PM**，在 `proposed-reviewed` 之后依据 Reviewer 的审计报告进行四态审批。
 
 ### 7.2 任务终点
 
