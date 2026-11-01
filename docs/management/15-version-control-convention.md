@@ -257,6 +257,7 @@ git rev-parse <sha>^{tree}
 
 | 时间 | 修改对象 | 修改原因 | 修改内容 | 生效时间 |
 |-|-|-|-|-|
+| 2026-11-01 | 本文件的载体范围（载体变化）：`docs/management/01`–`11`、`.clinerules/pm-role.md`、`.opencode/agents/coder.md`、`.kilo/agents/tester.md` | 修复 §3.1 纳管范围与仓库现状的缺口（上述治理资产此前未被 git 跟踪） | 将 14 个未跟踪治理文件纳入版本控制（提交 `18f4382`） | 2026-11-01（经用户批准后生效） |
 | 2026-11-01 | 本文件（`15-version-control-convention.md`） | GOI-coder-govdoc-20261101：治理文档类任务在交付段无执行者（R-1）；PM 专职审批 | §10 权限：Coder 落盘范围扩至交付物（含治理文档）；PM 落盘范围缩为仅任务台账 | 2026-11-01（经用户批准后生效） |
 | 2026-10-31 | 本文件（`15-version-control-convention.md`） | 与 `14` §6.0「落盘即提交」对齐：把 git 提交/推送权限从 PM 例外一/例外二式专项授权改为「落盘即提交」统一原则，一次性对齐所有角色 | §10 权限：以 §6.0 统一原则替换 PM 例外一/例外二与「其余……由被授权的执行角色完成」封闭句，并按角色列明各自的 git 落盘范围（Architect / Coder / Tester / Reviewer / PM） | 经用户批准落地 |
 | 2026-10-20 | 本文件（`15-version-control-convention.md`） | 补齐 PM 对被点名治理文档的提交权，与 `14-responsibility-boundaries.md` §6.2、`agents/pm.md` §5 例外二对齐 | §10 权限：将 PM 的 git 写入权限拆为「例外一」（任务台账）与「例外二」（用户点名的那一个项目治理文档），后者明确包含写入与 `git add` / `git commit` | 未定（待用户审批） |
