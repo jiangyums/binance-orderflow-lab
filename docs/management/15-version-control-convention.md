@@ -83,10 +83,19 @@ tasks/T-YYYYMMDD-NNN/
 ```markdown
 # T-YYYYMMDD-NNN <标题>
 
+- task_id: <任务 ID>
+- title: <任务标题>
 - status: <当前状态>
+- created_at: <创建时间>
+- updated_at: <更新时间>
+- revision: <修订版本>
 - assignees: { "proposer": "...", "reviewer": "...", "executor": "...", "verifier": "..." }
 - input_contracts: [...]
 - output_contracts: [...]
+- description: <可选>
+- dependencies: <可选>
+- approval_chain: <可选>
+- risk: <可选>
 
 ## 状态记录（append-only）
 T-YYYYMMDD-NNN proposed -> proposed-reviewed by Reviewer:copilot | 提案审计完成
@@ -99,6 +108,7 @@ T-YYYYMMDD-NNN proposed-reviewed -> proposed-approved by PM:Cline | decision=提
 2. “状态记录”区**只追加、不修改、不删除**（符合 `13` §11 追加记录规则）。
 3. 记录行格式遵循 `13` §10 状态记录格式：`<task_id> <旧状态> -> <新状态> by <角色>:<参与者ID> | <原因/动作>`。
 4. 每追加一条记录 = 完成一次状态转移。
+5. 字段区（`## 状态记录` 之前的 `- ` 行）随任务演进更新，不受 append-only 约束；append-only 仅适用于「状态记录」区。
 
 ---
 
