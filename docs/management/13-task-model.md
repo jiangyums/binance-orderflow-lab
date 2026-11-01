@@ -296,6 +296,7 @@ PM 根据审计、测试的结论进行审批。
 
 | 状态 | 交付物 | 生产者 | 载体 |
 |---|---|---|---|
+| （任务建立） | 任务台账 | Architect | `tasks/T-XXXX.md` |
 | `proposed` | 需求说明（提案） | Architect | `tasks/T-XXXX/proposal.md` |
 | `proposed-reviewed` | 提案审计报告 | Reviewer | `tasks/T-XXXX/review-proposal-report.md` |
 | `proposed-approved` | 审批结论 | PM | 任务台账（见 §10 状态记录格式） |
@@ -312,6 +313,8 @@ PM 根据审计、测试的结论进行审批。
 | `build-verified-deferred` | 审计报告 | PM | `tasks/T-XXXX/build-decision.md` |
 
 > 注：本表描述「状态 → 交付物」的对应关系，**不记录成熟度**；各状态的成熟度见 §6.1，其记录载体为任务台账与 Git 提交。
+>
+> 任务台账在 `proposed` 置位的同一轮创建，与 `proposal.md` 同轮落盘；建立时即写入首条状态记录行（旧状态取值见 §10）。
 
 ### 6.1 产物成熟度（五级）
 
