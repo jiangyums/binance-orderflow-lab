@@ -45,3 +45,13 @@
 - 现有产物 `review-proposal-report.md`、`proposal.md` 均不含 `> 状态：` 标记；A-4 的二次反对在核验后已推翻。
 
 > 本节为设计段审批报文，落盘于 `tasks/T-20261020-001/design-approval-report.md`。非项目治理文档。
+
+---
+
+## 7. 恢复转移审批（`designed-blocked → designed-approved`，依 `13` §3.4）
+
+- 触发条件：三个阻塞条件（P0-1、P0-2、P2-1）均已消除。
+- 依据：`13-task-model.md` §3.4 恢复转移规则——阻塞条件已消除后，重新进入批准流程。
+- 重新审批结论：**approved**。
+- 状态转移：`designed-blocked -> designed-approved`。
+- 说明：设计修订方案（M1–M5）主体在审计后未发生实质变化；审计发现 P2-1 已由提交 `0bdde27` 修复。设计段批准，任务可进入交付段（`build`）。
