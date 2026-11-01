@@ -209,7 +209,7 @@ git rev-parse <sha>^{tree}
 
 - `PM`：原则上仅可执行只读 git 命令（`log` / `diff` / `show` 等）；写入与 `git add` / `git commit` / `git push` 依 §6.0，与其落盘范围一致——任务台账 `tasks/T-YYYYMMDD-NNN.md` 的状态行/记录行，以及（用户点名时）被点名的那一个项目治理文档本身（见 `agents/pm.md` §5、`14` §6.2）。
 - `Architect`：对 `tasks/T-YYYYMMDD-NNN/proposal.md`、`design.md` 及对应任务台账依 §6.0 提交/推送。
-- `Coder`：对当前任务 `output_contracts` 指定范围内落盘的实现/文档及对应任务台账依 §6.0 提交/推送。
+- `Coder`：对当前任务 `output_contracts` 指定范围内落盘的交付物（含代码与文档，含项目治理文档）及对应任务台账依 §6.0 提交/推送。
 - `Tester`：对 `test-plan.md`、`tests/`、`test-report.md` 及对应任务台账依 §6.0 提交/推送。
 - `Reviewer`：对审计报告（`review-proposal-report.md` / `review-design-report.md` / `review-build-report.md`）及对应任务台账依 §6.0 提交/推送。
 - 各角色不得对范围外文件执行提交/推送；提交遵循 §5「每步一提交」、§8「每步结束提交/推送」。

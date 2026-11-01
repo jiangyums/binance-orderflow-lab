@@ -184,7 +184,7 @@ PM 的审批结论必须使用四态：`approved / rejected / blocked / deferred
 
 - 各角色对**本角色允许落盘的那批文件**（及其对应的任务台账）均依 §6.0「落盘即提交」拥有 `git add` / `git commit` / `git push` 权；下列仅列「能落盘哪些文件」，git 动作不再逐一重复。
 - `Architect` 可以提交项目提案或需求说明（置 `proposed`）与设计文档（置 `designed`），产物直接落盘到 `tasks/T-YYYYMMDD-NNN/`（见 `13-task-model.md` §6.1）。
-- `Coder` 可以落地已批准任务的实现代码，且改动不得超出当前任务 `output_contracts` 指定的文件范围。
+- `Coder` 可以落地已批准任务的交付物，含实现代码与文档（含项目治理文档），且改动不得超出当前任务 `output_contracts` 指定的文件范围；文本与逻辑须由已批准设计确定，不得自行发明。
 - `Coder` 与 `Architect` 均不得将任何文档或任务状态标记为 `approved` 系列（该系列由 PM 依审批结论触发，见 §3 第 2 条）。
 - `Reviewer` 可以在提交审查报告时置位对应审计状态（`proposed-reviewed` / `designed-reviewed` / `build-reviewed`），并追加台账状态记录行；审计报告与台账的 git 提交/推送依 §6.1。
 - `Tester` 可以置位 `build-reviewed-approved → build-verified`，并追加台账状态记录行；不得置位任何 `*-approved` 结论态（见 `13-task-model.md` §2.3）。
