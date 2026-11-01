@@ -271,7 +271,10 @@ PM 根据审计、测试的结论进行审批。
 
 ## 5. 任务字段
 
-每个任务至少包含以下字段：
+每个任务包含以下字段，分级必填：
+
+- 必填：`task_id`／`title`／`status`／`created_at`／`updated_at`／`revision`／`assignees`／`input_contracts`／`output_contracts`
+- 选填（缺省视为空）：`description`／`dependencies`／`approval_chain`／`risk`
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
