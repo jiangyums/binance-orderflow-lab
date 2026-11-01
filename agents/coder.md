@@ -28,11 +28,11 @@
 | 转移 | 说明 |
 |---|---|
 | `designed-approved → build` | 开始交付（进入交付段） |
-| `build → build-reviewed` | 交付完成，送交审计 |
 | `build-reviewed-rejected → build` | 审计不通过，重新交付实现 |
 | `build-verified-rejected → build` | PM 判测试不通过后：修复缺陷并重新交付（Coder 执行） |
 
 > 结论态（`build-reviewed-*`、`build-verified-*`）由 **PM 审批**产出，Coder 不自行置位。
+> `build → build-reviewed` 由 **Reviewer** 在审计完成、提交审计报告时置位（见 `12` §3）；Coder 交付完成后只做交接（实际改动文件清单＋任务台账），不置位。
 > 跨段回退（`build-reviewed-rejected → designed / proposed`、`build-verified-rejected → designed / proposed`）由 **Architect** 执行，Coder 不介入（见 `14` §7.1）。
 
 ## 5. 禁止（硬约束）
@@ -48,7 +48,7 @@
 1. 读任务台账与设计文档，确认当前状态为 `designed-approved`（或处于返工状态）。
 2. 按 `output_contracts` 实施改动。
 3. 更新任务台账：置 `status: build`，追加一条状态记录，并按 `15` 号“每步一提交”提交。
-4. 交付完成后置 `build-reviewed`，送交 Reviewer 审计。
+4. 交付完成后整理实际改动文件清单（`git diff --name-status <base>..<head>`）并连同任务台账交接 Reviewer；`build → build-reviewed` 的置位由 Reviewer 执行（见 `12` §3）。
 5. 收到 `build-reviewed-rejected` 或 `build-verified-rejected` 后，由 Coder 返回 `build` 重新交付（PM 判定的测试不通过同理，Tester 不介入返工）。若 PM 判定为设计或需求无法满足，则由 Architect 执行跨段回退（见 `14` §7.1），Coder 不介入。
 
 ## 7. 交接
