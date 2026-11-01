@@ -186,6 +186,11 @@ PM 的审批结论必须使用四态：`approved / rejected / blocked / deferred
 - `Tester` 可以置位 `build-reviewed-approved → build-verified`，并追加台账状态记录行；不得置位任何 `*-approved` 结论态（见 `13-task-model.md` §2.3）。
 - 任何角色均不得修改未经审批的实现 / 生产代码，不得修改任务台账中非本角色应写的行（台账写入规则见 `15-version-control-convention.md` §4.3）。
 
+### 6.5 开工前置检查与提交同步
+
+1. **开工前置检查**：任何角色开工执行前，须核验上一流程段已全部完成——前置状态已置位并有状态记录（见 `13-task-model.md` §2／§10）、对应交付物均已落盘（见 `13-task-model.md` §6 表）。若上一流程仅完成部分（如审计／审批／测试报告缺失、状态记录断链、产物未落盘），不得开始执行，应向用户提示先完成上一流程的工作；经用户明确改令方可代为继续。
+2. **提交即同步**：依 §6.0，每笔提交后确认与 `origin` 同步（`git status -sb`）；属本角色范围的推送欠账先补推。推送失败应重试；仍失败时向用户显性报告「已提交未推送」及原因，不得静默积压。
+
 ---
 
 ## 7. 责任传递
@@ -293,6 +298,7 @@ PM
 
 | 时间 | 修改对象 | 修改原因 | 修改内容 | 生效时间 |
 |-|-|-|-|-|
+| 2026-11-01 | 开工前置检查与提交同步纪律：`14-responsibility-boundaries.md`（新增 §6.5）、`agents/architect.md`、`agents/coder.md`、`agents/tester.md`、`agents/reviewer.md`、`agents/pm.md` | 实测缺口：①提交后不查远程同步，推送欠账静默积压（实测欠 18 笔）；②推送失败无重试、无显性记录（实测 `github.com:443` 连接失败）；③开工不核验上一流程完整性，欠账由下一个 agent 无声承接 | §6.5 新增两条：开工前置检查（上一流程仅部分完成时不得开工，须提示用户先完成）；提交即同步（每笔提交后确认与 `origin` 同步，推送失败重试并显性报告）；五本手册 §6 首部插第 0 步、§8 自检清单各增两条 | 2026-11-01（经用户批准后生效） |
 | 2026-11-01 | `agents/coder.md` §4／§6（经本文件 §11 登记） | coder.md 把 `build → build-reviewed` 列入 Coder 允许转移，与 `12` §3（Reviewer 置位 `build-reviewed`）、`13` §2.3（该态归审计线 Reviewer）及 `13` §6（交付物为 Reviewer 审计报告）冲突，易致 Coder 误置位 | §4 允许转移表删 `build → build-reviewed` 行，结论态说明补「由 Reviewer 审计完成置位，Coder 只交接」；§6 步骤 4 改为「整理改动清单并交接 Reviewer，置位由 Reviewer 执行」 | 2026-11-01（经用户批准后生效） |
 | 2026-11-01 | 版本控制纳管（载体变化）：`docs/management/01`–`11`、`.clinerules/pm-role.md`、`.opencode/agents/coder.md`、`.kilo/agents/tester.md` | 修复 `15` §3.1 纳管范围与仓库现状的缺口（上述治理资产此前未被 git 跟踪） | 将 14 个未跟踪治理文件纳入版本控制（提交 `18f4382`） | 2026-11-01（经用户批准后生效） |
 | 2026-11-01 | GOI-coder-govdoc-20261101：`14-responsibility-boundaries.md`、`12-multi-agent-roles.md`、`13-task-model.md`、`15-version-control-convention.md`、`agents/pm.md`、`agents/coder.md`、`AGENTS.md` | 治理文档类任务在交付段无执行者（R-1）；PM 专职审批 | §2.1 职责改「审批项目治理文档」；§5.1 删「必须由 PM 编写」句与「不得审批治理文档本身」；§6.2 删 PM 治理文档写入条；§6.4 Coder 落盘范围扩至交付物（含治理文档）；`13` §8 改为「Coder 落盘 → PM 审批」；`12` §2/§3.1 与 `15` §10 同步；`agents/pm.md`、`agents/coder.md`、`AGENTS.md` 同步 | 2026-11-01（经用户批准后生效；本变更为审批权移交 PM 前的最后一次用户审批） |
