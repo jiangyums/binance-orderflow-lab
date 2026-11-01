@@ -297,13 +297,13 @@ PM 根据审计、测试的结论进行审批。
 | 状态 | 交付物 | 生产者 | 载体 |
 |---|---|---|---|
 | `proposed` | 需求说明（提案） | Architect | `tasks/T-XXXX/proposal.md` |
-| `proposed-reviewed` | 提案审计报告 | Reviewer | `tasks/T-XXXX/review-proposal.md` |
+| `proposed-reviewed` | 提案审计报告 | Reviewer | `tasks/T-XXXX/review-proposal-report.md` |
 | `proposed-approved` | 审批结论 | PM | 任务台账（见 §10 状态记录格式） |
 | `designed` | 设计方案（实现方案） | Architect | `tasks/T-XXXX/design.md` |
-| `designed-reviewed` | 设计审计报告 | Reviewer | `tasks/T-XXXX/review-design.md` |
+| `designed-reviewed` | 设计审计报告 | Reviewer | `tasks/T-XXXX/review-design-report.md` |
 | `designed-approved` | 审计结论 | PM | 任务台账 |
 | `build` | 代码 + 代码相关文档 | Coder | 仓库代码文件 + 相关 `docs/` |
-| `build-reviewed` | 交付审计报告 | Reviewer | `tasks/T-XXXX/review-build.md` |
+| `build-reviewed` | 交付审计报告 | Reviewer | `tasks/T-XXXX/review-build-report.md` |
 | `build-reviewed-approved` | 审计结论 | PM | 任务台账 |
 | `build-verified` | 测试验收报告 | Tester | `tasks/T-XXXX/test-plan.md`、`tasks/T-XXXX/tests/`、`tasks/T-XXXX/test-report.md` |
 | `build-verified-approved` | 审计结论 | PM | 任务台账 |

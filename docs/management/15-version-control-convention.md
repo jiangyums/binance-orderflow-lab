@@ -201,7 +201,7 @@ git rev-parse <sha>^{tree}
 - `Architect`：对 `tasks/T-YYYYMMDD-NNN/proposal.md`、`design.md` 及对应任务台账依 §6.0 提交/推送。
 - `Coder`：对当前任务 `output_contracts` 指定范围内落盘的实现/文档及对应任务台账依 §6.0 提交/推送。
 - `Tester`：对 `test-plan.md`、`tests/`、`test-report.md` 及对应任务台账依 §6.0 提交/推送。
-- `Reviewer`：对审计报告（`review-proposal.md` / `review-design.md` / `review-build.md`）及对应任务台账依 §6.0 提交/推送。
+- `Reviewer`：对审计报告（`review-proposal-report.md` / `review-design-report.md` / `review-build-report.md`）及对应任务台账依 §6.0 提交/推送。
 - 各角色不得对范围外文件执行提交/推送；提交遵循 §5「每步一提交」、§8「每步结束提交/推送」。
 
 ---

@@ -148,7 +148,7 @@ PM 的审批结论必须使用四态：`approved / rejected / blocked / deferred
 - `Reviewer` 不能提出解决方案。
 - `Reviewer` 不能直接落地实现。
 - **例外**：`Reviewer` 在提交审查报告时置位审计状态、写入审计报告与台账记录行（见 §6.4），
-  并对**审计报告（`review-proposal.md` / `review-design.md` / `review-build.md`）与该任务台账**
+  并对**审计报告（`review-proposal-report.md` / `review-design-report.md` / `review-build-report.md`）与该任务台账**
   依 §6.0 执行 `git add` / `git commit` / `git push`。
 
 ---
