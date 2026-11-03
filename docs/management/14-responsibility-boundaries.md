@@ -32,7 +32,7 @@
 - 写权限：见 §6.2（只读审批）。
 - 输出：
   - 审批结论：四态之一；
-  - 审批报告：落盘到 `tasks/T-YYYYMMDD-NNN/approval-report.md`；
+  - 审批报告：落盘到 `tasks/T-YYYYMMDD-NNN/<阶段>-approval-report.md`（每审批段一份，命名对照见 §6.2）；
   - 项目治理文档：范围见 `00-governance-index.md` §6。
 
 ---
@@ -156,13 +156,22 @@ PM 的审批结论必须使用四态：`approved / rejected / blocked / deferred
 - `PM` 可以在**审计结论已出具**的前提下执行审批：依审计/测试结论置位任务台账中对应的 `*-approved` 状态，
   且**不得改动产物文件内的任何状态标注**（产物文件本就不标注状态；成熟度由任务台账与 Git 提交承载，见 `13` §6.1）。
 - `PM` 可以写入任务台账 `tasks/T-YYYYMMDD-NNN.md` 的 `status` 行与状态记录行；
-  该台账的 git 提交/推送依 §6.0（`git add` / `git commit` / `git push`）。除台账文件外，不得写入或提交任何文件。
+  该台账的 git 提交/推送依 §6.0（`git add` / `git commit` / `git push`）。除任务台账与本角色审批报告（`tasks/T-YYYYMMDD-NNN/<阶段>-approval-report.md`，见 §2.1 与本节对照表）外，不得写入或提交任何文件。
 - 审批结论必须是四态：`approved / rejected / blocked / deferred`。  
   不得使用“有条件通过”“部分通过”“通过但需补充”等非四态结论；  
   如存在条件或未满足项，按 `rejected` 或 `blocked` 处理，不得另创审批态。
 - 审批时必须逐条覆核审计意见，并在审批报告中标注“修复”“无视”“延后”；  
   同时补充“审计覆盖缺口”，指明未被审计、应当被审计的领域与建议完成时间。
-- 审批报告必须落盘为 `tasks/T-YYYYMMDD-NNN/approval-report.md`，与对应状态记录行同步提交。
+- 审批报告必须落盘为 `tasks/T-YYYYMMDD-NNN/<阶段>-approval-report.md`，与对应状态记录行同步提交；每审批段一份，`<阶段>` 取值见下表：
+
+| 审批点（状态转移） | <阶段> | 文件名 |
+|---|---|---|
+| proposed-reviewed → proposed-{approved\|rejected\|blocked\|deferred} | proposal | proposal-approval-report.md |
+| designed-reviewed → designed-{...} | design | design-approval-report.md |
+| build-reviewed → build-reviewed-{...} | build-reviewed | build-reviewed-approval-report.md |
+| build-verified → build-verified-{...} | build-verified | build-verified-approval-report.md |
+
+同段重新审批在原文件覆盖修订，历史由 Git 保留（见 `13` §6.2）。
 - 除上述各项外，`PM` 不得修改任何文档与代码。
 
 ---
@@ -305,6 +314,7 @@ PM
 | 2026-10-31 | 「落盘即提交」治理修订：`14-responsibility-boundaries.md`、`15-version-control-convention.md`、`agents/pm.md`、`agents/reviewer.md`、`agents/README.md`、`12-multi-agent-roles.md`、`AGENTS.md`、`.github/agents/reviewer.agent.md` | 按用户要求把「文件落盘」与「git 提交/推送」从两级分离授权收敛为同一级，消除 Reviewer 无 git 提交权的漏洞，并一次性对齐所有角色 | 新增 `14` §6.0「落盘即提交」统一原则（落盘即含 `git add`/`git commit`/`git push`，且仅限本角色落盘范围）；`14` §6.1/§6.2/§6.4 改引 §6.0；`15` §10 以 §6.0 替换 PM 例外一/例外二与「其余……由被授权的执行角色完成」封闭句，并按角色列明落盘范围；`agents/pm.md` §5 例外一/二改为「落盘即提交」落地说明；`agents/reviewer.md` §5/§6/§8 补 Reviewer git 提交/推送；`.github/agents/reviewer.agent.md` 工具面补 `git`/`terminal` 并补提交说明；`agents/README.md` §4 补 Reviewer 工具面说明；`12` §2 角色表与 §3.1 对齐 §6.0；`AGENTS.md` §1 补「落盘即提交」注 | 经用户批准落地 |
 | 2026-10-20 | 本批治理修订：`14-responsibility-boundaries.md`、`13-task-model.md`、`12-multi-agent-roles.md`、`15-version-control-convention.md`、`agents/pm.md`、`agents/architect.md`、`agents/coder.md`、`agents/tester.md`、`agents/reviewer.md` | 统一写权限口径、状态转移口径与 PM 职责边界，消除文档间的职责与转移冲突 | `14` §2 写权限改为引用 §6、§2.1 措辞改为「生效须用户审批」、§3 增补 `blocked`/`deferred` 语义、§6 新增「权限边界」整节（§6.1 补 Reviewer 例外、§6.2 改写为四条、§6.4 补台账记录行）、§7.1 增补返工分支与跨段回退、§8 原职责表改为「责任归属索引」、§9 与 §8 对齐、§11 增本节；`13` 增 5 条 `*-rejected → designed/proposed` 跨段回退并删除直接跨段转移；`12` 修正 Tester 测试线起点为 `build-reviewed-approved → build-verified`、补 PM 治理文档提交权与 Architect 跨段回退、订正指向 `14` §2.1 的失效引用；`15` 与 `agents/pm.md` 补齐 PM 对被点名治理文档的提交权；`agents/architect.md` §4 补 5 条跨段回退；`agents/coder.md`、`agents/tester.md` 明确跨段回退由 Architect 执行、Coder/Tester 不介入；`agents/reviewer.md` 删除直接跨段回退 | `14` / `15` / `agents/*`：未定（待用户审批）；`12` / `13`：经用户授权修订，生效时间待确认 |
 | 2026-10-20 | Reviewer 角色分配：`agents/reviewer.md`、`agents/README.md`、`AGENTS.md`、`.github/agents/reviewer.agent.md`（新增）、`12-multi-agent-roles.md`、`13-task-model.md`、`00-governance-index.md`、`15-version-control-convention.md` | Reviewer 角色此前无工具加载入口（人工指定），无法实际执行审计线；按用户要求将 Reviewer 角色分配给 VS Code Copilot | 新增 VS Code Copilot 的 Reviewer 加载入口 `.github/agents/reviewer.agent.md`（agent 定义，提示词正文指向 `agents/reviewer.md`）；参与者由「未指定」改为 VS Code Copilot（`Reviewer:copilot`）；`00` §6 载体表增 `.github/agents/`；`15` §3.1 纳管范围增 `.github/agents/`；`12` §2 角色表与 §4 映射表、`13` §10/§11 示例中的 `Reviewer:xxx` 统一改为 `Reviewer:copilot` | `agents/*` / `12` / `13` / `00` / `15`：经用户授权修订，生效时间待确认 |
+| 2026-11-03 | `14` §2.1/§6.2、`12` §2/§3.1、`15` §10、`agents/pm.md` §3/§5/§6、`.clinerules/pm-role.md`、`AGENTS.md` §1 | T-20261102-001：消除「PM 须落盘审批报告」与「PM 不得写台账外文件」的硬矛盾 | 审批报告定性为每审批段一份 `tasks/T-YYYYMMDD-NNN/<阶段>-approval-report.md`；PM 落盘范围增列该报告 | 经用户批准后生效 |
 
 > 本批修订涉及的治理文件此前**未纳入版本控制**（`docs/management/`、`agents/`、`AGENTS.md` 尚无基线提交），首次纳管后其差异可由 git 追溯；为不依赖 git diff 作为唯一差异依据，逐文件改动见下方「修订明细」。
 

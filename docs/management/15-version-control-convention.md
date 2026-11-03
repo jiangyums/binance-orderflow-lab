@@ -207,7 +207,7 @@ git rev-parse <sha>^{tree}
 
 遵循 `14` §6.0「落盘即提交」统一原则：凡被授权落盘某文件的角色，即同时被授权对该文件（及对应的任务台账）执行 `git add` / `git commit` / `git push`；各角色 git 写权仅限本角色被允许落盘的那批文件。
 
-- `PM`：原则上仅可执行只读 git 命令（`log` / `diff` / `show` 等）；写入与 `git add` / `git commit` / `git push` 依 §6.0，与其落盘范围一致——仅任务台账 `tasks/T-YYYYMMDD-NNN.md` 的状态行/记录行（见 `agents/pm.md` §5、`14` §6.2）。
+- `PM`：原则上仅可执行只读 git 命令（`log` / `diff` / `show` 等）；写入与 `git add` / `git commit` / `git push` 依 §6.0，与其落盘范围一致——任务台账 `tasks/T-YYYYMMDD-NNN.md` 的状态行/记录行，以及本角色审批报告 `tasks/T-YYYYMMDD-NNN/<阶段>-approval-report.md`（见 `agents/pm.md` §5、`14` §6.2）。
 - `Architect`：对 `tasks/T-YYYYMMDD-NNN/proposal.md`、`design.md` 及对应任务台账依 §6.0 提交/推送。
 - `Coder`：对当前任务 `output_contracts` 指定范围内落盘的交付物（含代码与文档，含项目治理文档）及对应任务台账依 §6.0 提交/推送。
 - `Tester`：对 `test-plan.md`、`tests/`、`test-report.md` 及对应任务台账依 §6.0 提交/推送。
@@ -262,4 +262,5 @@ git rev-parse <sha>^{tree}
 | 2026-10-31 | 本文件（`15-version-control-convention.md`） | 与 `14` §6.0「落盘即提交」对齐：把 git 提交/推送权限从 PM 例外一/例外二式专项授权改为「落盘即提交」统一原则，一次性对齐所有角色 | §10 权限：以 §6.0 统一原则替换 PM 例外一/例外二与「其余……由被授权的执行角色完成」封闭句，并按角色列明各自的 git 落盘范围（Architect / Coder / Tester / Reviewer / PM） | 经用户批准落地 |
 | 2026-10-20 | 本文件（`15-version-control-convention.md`） | 补齐 PM 对被点名治理文档的提交权，与 `14-responsibility-boundaries.md` §6.2、`agents/pm.md` §5 例外二对齐 | §10 权限：将 PM 的 git 写入权限拆为「例外一」（任务台账）与「例外二」（用户点名的那一个项目治理文档），后者明确包含写入与 `git add` / `git commit` | 未定（待用户审批） |
 | 2026-10-20 | 本文件（`15-version-control-convention.md`） | Reviewer 角色分配给 VS Code Copilot，其加载入口须纳入版本控制 | §3.1 纳管范围增 `.github/agents/`（VS Code Copilot 的 agent 定义）；§4 状态记录示例的 `Reviewer:xxx` 改为 `Reviewer:copilot` | 未定（待用户审批） |
+| 2026-11-03 | 本文件 §10 PM 行 | T-20261102-001：解除 PM 落盘审批报告的禁令与要求之矛盾 | §10 PM 行落盘范围增列本角色审批报告 `tasks/T-YYYYMMDD-NNN/<阶段>-approval-report.md`；命名对照见 `14` §6.2 | 经用户批准后生效 |
 
