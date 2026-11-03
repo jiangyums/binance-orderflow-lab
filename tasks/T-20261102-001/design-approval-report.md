@@ -180,6 +180,52 @@ designed -> designed-reviewed           by Reviewer:copilot   | 设计审计
 designed-reviewed -> designed-approved  by PM:Cline           | 审批通过
 ```
 
+## 9. 第 3 轮审批（2026-11-03，revision 3 / 第 2 轮返工复审）
+
+- 审批对象：`tasks/T-20261102-001/design.md`（revision 3）＋ `tasks/T-20261102-001/review-design-report.md`（第 2 轮返工复审）
+- 审批阶段：`designed-reviewed`
+- **审批结论：`approved`**
+
+### 9.1 审计意见核对表（对照三轮审计）
+
+| # | 审计意见 | 处置 | 理由 |
+|---|---|---|---|
+| 第 1 轮 P1 | R-4 状态映射／`13` §3.4 引用错误 | **修复** | 已闭合（见 §8.1） |
+| 第 1 轮 P1 | M-11 缺可审定文本 | **修复** | 已闭合（见 §8.1） |
+| 第 1 轮 P2 | 回滚订正载体未闭合 | **修复** | 已闭合（见 §8.1） |
+| 第 2 轮 P1 | M-14「仅载…」与 `AGENTS.md` §3.3 冲突 | **修复** | `design.md` §4.2 M-14 已逐字替换为订正句，与本报告 §8.2 全等；核对 ✅ |
+| 本轮 | 未发现阻碍进入 build 的问题 | **采纳** | 审计总体判断：设计已足以进入 build |
+
+### 9.2 审计覆盖缺口（转交交付段复核）
+
+| 领域／对象 | 未覆盖原因 | 建议时机 |
+|---|---|---|
+| M-12～M-16 实际落地结果 | 设计稿阶段 | 交付段 `build-reviewed` |
+| J9–J12 机械验收 | 尚未 build | 交付段 |
+| 变更经用户批准后的实际生效时间与公开仓库报告内容 | 无后续证据 | 生效后 |
+
+### 9.3 结论、条件与返工
+
+- **结论**：`approved`（设计获批，可进入交付段）。
+- **条件**：无（非 `blocked`）。
+- **返工要求**：无（非 `rejected`）。
+- **流程定性（延续 §8.4）**：追认既成实施、不回退；`build` 记录行须如实注明「实施先于设计批准（`1ddeb4e`）」＋戊-5 改名事实。
+
+### 9.4 下一步（Coder:opencode 执行）
+
+置 `designed-approved -> build`，按 `design.md` §8 交付顺序落盘：
+
+1. M-12（`13` §6 四行＋加注，含 `output_contracts` 扩围）、M-13、M-14、M-16（`14:167`／`:169-172` 五行整行替换）；
+2. M-15 变更记录行（仅 `14` §11）；
+3. 台账 `build` 记录行原因字段写入戊-5 改名事实＋「实施先于设计批准」注记；
+4. 每步一提交；随后交 Reviewer 审计（`build -> build-reviewed` 由 Reviewer 置位）。
+
+### 9.5 状态转移
+
+```text
+designed-approved -> build by Coder:opencode | 按 design.md §8 落盘 M-12～M-16
+```
+
 ---
 
 > 本报告为**任务产物**，落盘于 `tasks/T-20261102-001/design-approval-report.md`，不属于项目治理文档。
