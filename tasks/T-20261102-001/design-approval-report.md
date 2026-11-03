@@ -53,14 +53,78 @@
 - **条件**：无（非 `blocked`）。
 - **返工归属**：**Architect:Qoder-A**，同段返工 `designed-rejected -> designed`（`13` §3.2）。
 
-## 5. 下一步（Architect 应执行）
+## 5. 返工裁定记录（戊-1～戊-7；已由 PM/用户裁定，2026-11-03）
 
-1. 修正 §11 R-4：删除 §3.4 引用，按 §3.2 重写「用户拒绝批准」的状态落点，并说明为何不适用 `blocked`；
-2. 补全 M-11 完整变更行文本（对齐 M-10 的完整度）；
-3. 闭合回滚订正记录的载体与形制（并入戊-5，或在 §11 直写）；
-4. 收敛戊-1～戊-7：每项给出「择一即闭合」的候选，或先行取得裁定。
+| 项 | 议题 | 裁定 | 需动作 |
+|---|---|---|---|
+| 戊-1 | `AGENTS.md:27` 是否扩围 | **追认纳入** | 无（已随提交 `1ddeb4e` 实施） |
+| 戊-2 | `13` §6 表是否补列审批报告 | **纳入** | 改 `13` §6（见 §6.2）＋ 台账 `output_contracts` 扩围 |
+| 戊-3 | `build-decision.md` 归口 | **并存＋交叉引用** | 改 `14` §6.2（见 §6.3） |
+| 戊-4 | 变更行「生效时间」列填写时机 | **维持「经用户批准后生效」** | 无 |
+| 戊-5 | 改名事实的记录载体 | **甲**：记入 `T-20261102-001` 的 build 记录行原因字段（`T-20261020-001.md` 零改动） | 待 build 行（见 §6.6） |
+| 戊-6 | 审批报告内容边界／公开披露 | **增入**内容边界句 | 改 `14` §6.2（见 §6.4） |
+| 戊-7 | 生效前各段审批报告落盘者 | **追认已解决** | 无（PM 已补落本任务 proposal／design 两份报告） |
 
-以上完成后重新提交至 `designed`，重新经历 `designed-reviewed → designed-approved`。
+## 6. 返工规格（Architect 须写入修订稿；精确文本）
+
+### 6.1 修 P0 — R-4（`design.md` §11 现 `:173` 整行替换为）
+
+```markdown
+- R-4 用户拒绝批准：文本已落盘但未生效 ⇒ 处置为在 M-10 变更行追加「未生效」说明行（新增行，不改既存行）；任务按 `13` §3.2 由 `build-verified` 判 `build-verified-rejected`（**不适用 `blocked`**——依 `13` §2.4.1，需修改本任务文件时不得判 `blocked`；`deferred` 表排序，非拒绝）；若结论为设计/需求无法满足，则回退 `designed`／`proposed`（由 Architect 执行）。
+```
+
+### 6.2 戊-2 — `docs/management/13-task-model.md` §6 交付物表
+
+四行 PM 结论行的「载体」补列审批报告：
+
+```markdown
+| `proposed-approved` | 审批结论 | PM | 任务台账；`tasks/T-XXXX/proposal-approval-report.md` |
+| `designed-approved` | 审计结论 | PM | 任务台账；`tasks/T-XXXX/design-approval-report.md` |
+| `build-reviewed-approved` | 审计结论 | PM | 任务台账；`tasks/T-XXXX/build-reviewed-approval-report.md` |
+| `build-verified-approved` | 审计结论 | PM | 任务台账；`tasks/T-XXXX/build-verified-approval-report.md` |
+```
+
+并在该表下方加注（覆盖四态，避免为每个结论态逐一加行）：
+
+```markdown
+> PM 的四态结论（`approved`／`rejected`／`blocked`／`deferred`）均产出审批报告，统一落盘为 `tasks/T-XXXX/<阶段>-approval-report.md`（命名对照见 `14` §6.2）；本表仅列载体主项。
+```
+
+> 配套：本任务 `output_contracts` 扩围至 `docs/management/13-task-model.md`（字段订正，`15` §4.3.5）。
+
+### 6.3 戊-3 — `docs/management/14-responsibility-boundaries.md` §6.2（对照表后加句）
+
+```markdown
+> `build-verified` 线的返工／阻塞／延迟决定另见 `13` §6 的 `tasks/T-XXXX/build-decision.md`；该形制与本节的 `<阶段>-approval-report.md` **并存，不互替**。
+```
+
+### 6.4 戊-6 — `docs/management/14-responsibility-boundaries.md` §6.2（加一条）
+
+```markdown
+- 审批报告仅载审计意见处置、四态结论、审计覆盖缺口与返工归属，**不得含凭据、密钥或未脱敏数据**（本仓库为公开仓库，审批报告随提交即公开）。
+```
+
+### 6.5 对齐「已实施」现实（必须——否则审计将再次判「设计与仓库不符」）
+
+在 `design.md` §0 基线或 §8 交付顺序注明：
+
+```markdown
+> 变更项 M-1～M-11 已由**用户直接授权**实施（提交 `1ddeb4e`）；`tasks/T-20261020-001/approval-report.md` 已 `git mv` 改名为 `proposal-approval-report.md`。本设计稿据此修订，描述**已发生的实施**，不再表述为「待实施」。
+```
+
+### 6.6 戊-5 — 记录行文本（待 build 记录行存在时写入 `T-20261102-001` 记录行原因字段；`T-20261020-001.md` 不动）
+
+```text
+… | 交付：依用户裁定对 tasks/T-20261020-001/approval-report.md 执行 git mv 改名（一次性例外覆盖 13 §6.2，例外不入规则文本）；并落戊-1/戊-2/戊-3/戊-6 治理改动
+```
+
+## 7. 状态转移（返工入口）
+
+```text
+designed-rejected -> designed           by Architect:Qoder-A | 按本报告 §5／§6 修订 design.md 并置 designed
+designed -> designed-reviewed           by Reviewer:copilot   | 设计审计
+designed-reviewed -> designed-approved  by PM:Cline           | 审批通过
+```
 
 ---
 
