@@ -164,14 +164,18 @@ PM 的审批结论必须使用四态：`approved / rejected / blocked / deferred
   同时补充“审计覆盖缺口”，指明未被审计、应当被审计的领域与建议完成时间。
 - 审批报告必须落盘为 `tasks/T-YYYYMMDD-NNN/<阶段>-approval-report.md`，与对应状态记录行同步提交；每审批段一份，`<阶段>` 取值见下表：
 
-| 审批点（状态转移） | <阶段> | 文件名 |
+| 审批点（状态转移） | `<阶段>` | 文件名 |
 |---|---|---|
-| proposed-reviewed → proposed-{approved\|rejected\|blocked\|deferred} | proposal | proposal-approval-report.md |
-| designed-reviewed → designed-{...} | design | design-approval-report.md |
-| build-reviewed → build-reviewed-{...} | build-reviewed | build-reviewed-approval-report.md |
-| build-verified → build-verified-{...} | build-verified | build-verified-approval-report.md |
+| `proposed-reviewed → proposed-{approved\|rejected\|blocked\|deferred}` | `proposal` | `proposal-approval-report.md` |
+| `designed-reviewed → designed-{...}` | `design` | `design-approval-report.md` |
+| `build-reviewed → build-reviewed-{...}` | `build-reviewed` | `build-reviewed-approval-report.md` |
+| `build-verified → build-verified-{...}` | `build-verified` | `build-verified-approval-report.md` |
 
 同段重新审批在原文件覆盖修订，历史由 Git 保留（见 `13` §6.2）。
+
+> `build-verified` 线的返工／阻塞／延迟决定另见 `13` §6 的 `tasks/T-XXXX/build-decision.md`；该形制与本节的 `<阶段>-approval-report.md` **并存，不互替**。
+
+- 审批报告须载 `AGENTS.md` §3.3 要求的审批要素（审批范围、问题清单〔P0/P1/P2〕、审计意见核对表、审计覆盖缺口、四态结论、条件〔适用时〕、返工归属与下一步）；**不得含凭据、密钥或未脱敏数据**（本仓库为公开仓库，审批报告随提交即公开）。
 - 除上述各项外，`PM` 不得修改任何文档与代码。
 
 ---
@@ -315,6 +319,7 @@ PM
 | 2026-10-20 | 本批治理修订：`14-responsibility-boundaries.md`、`13-task-model.md`、`12-multi-agent-roles.md`、`15-version-control-convention.md`、`agents/pm.md`、`agents/architect.md`、`agents/coder.md`、`agents/tester.md`、`agents/reviewer.md` | 统一写权限口径、状态转移口径与 PM 职责边界，消除文档间的职责与转移冲突 | `14` §2 写权限改为引用 §6、§2.1 措辞改为「生效须用户审批」、§3 增补 `blocked`/`deferred` 语义、§6 新增「权限边界」整节（§6.1 补 Reviewer 例外、§6.2 改写为四条、§6.4 补台账记录行）、§7.1 增补返工分支与跨段回退、§8 原职责表改为「责任归属索引」、§9 与 §8 对齐、§11 增本节；`13` 增 5 条 `*-rejected → designed/proposed` 跨段回退并删除直接跨段转移；`12` 修正 Tester 测试线起点为 `build-reviewed-approved → build-verified`、补 PM 治理文档提交权与 Architect 跨段回退、订正指向 `14` §2.1 的失效引用；`15` 与 `agents/pm.md` 补齐 PM 对被点名治理文档的提交权；`agents/architect.md` §4 补 5 条跨段回退；`agents/coder.md`、`agents/tester.md` 明确跨段回退由 Architect 执行、Coder/Tester 不介入；`agents/reviewer.md` 删除直接跨段回退 | `14` / `15` / `agents/*`：未定（待用户审批）；`12` / `13`：经用户授权修订，生效时间待确认 |
 | 2026-10-20 | Reviewer 角色分配：`agents/reviewer.md`、`agents/README.md`、`AGENTS.md`、`.github/agents/reviewer.agent.md`（新增）、`12-multi-agent-roles.md`、`13-task-model.md`、`00-governance-index.md`、`15-version-control-convention.md` | Reviewer 角色此前无工具加载入口（人工指定），无法实际执行审计线；按用户要求将 Reviewer 角色分配给 VS Code Copilot | 新增 VS Code Copilot 的 Reviewer 加载入口 `.github/agents/reviewer.agent.md`（agent 定义，提示词正文指向 `agents/reviewer.md`）；参与者由「未指定」改为 VS Code Copilot（`Reviewer:copilot`）；`00` §6 载体表增 `.github/agents/`；`15` §3.1 纳管范围增 `.github/agents/`；`12` §2 角色表与 §4 映射表、`13` §10/§11 示例中的 `Reviewer:xxx` 统一改为 `Reviewer:copilot` | `agents/*` / `12` / `13` / `00` / `15`：经用户授权修订，生效时间待确认 |
 | 2026-11-03 | `14` §2.1/§6.2、`12` §2/§3.1、`15` §10、`agents/pm.md` §3/§5/§6、`.clinerules/pm-role.md`、`AGENTS.md` §1 | T-20261102-001：消除「PM 须落盘审批报告」与「PM 不得写台账外文件」的硬矛盾 | 审批报告定性为每审批段一份 `tasks/T-YYYYMMDD-NNN/<阶段>-approval-report.md`；PM 落盘范围增列该报告 | 经用户批准后生效 |
+| 2026-11-03 | `13` §6 交付物表、`14` §6.2 | T-20261102-001：戊-2／戊-3／戊-6 落实——交付物表补列审批报告载体，标明 `build-decision.md` 与审批报告的并存关系，并明确审批报告的内容边界 | `13` §6 交付物表四行载体补列 `tasks/T-XXXX/<阶段>-approval-report.md`，表下加四态注；`14` §6.2 增 `build-decision.md` 并存句与审批报告内容边界句；补齐 §6.2 对照表行内代码标记（对齐已批准设计 v1 §3） | 经用户批准后生效 |
 
 > 本批修订涉及的治理文件此前**未纳入版本控制**（`docs/management/`、`agents/`、`AGENTS.md` 尚无基线提交），首次纳管后其差异可由 git 追溯；为不依赖 git diff 作为唯一差异依据，逐文件改动见下方「修订明细」。
 
