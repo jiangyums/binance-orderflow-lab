@@ -55,7 +55,7 @@
 ## 7. 交接
 
 - 交 Reviewer：本次**实际改动文件清单**（可用 `git diff --name-status <base>..<head>` 生成）+ 任务台账。
-- 交 Tester：审计通过后的实现代码。
+- 交 Tester：审计通过后的实现代码（`has_code = true` 时）；`has_code = false` 的任务无此交接，交付审计后由 PM 结案。
 
 ## 8. 自检清单
 

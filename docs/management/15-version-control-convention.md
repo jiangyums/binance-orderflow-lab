@@ -92,6 +92,7 @@ tasks/T-YYYYMMDD-NNN/
 - assignees: { "proposer": "...", "reviewer": "...", "executor": "...", "verifier": "..." }
 - input_contracts: [...]
 - output_contracts: [...]
+- has_code: <true|false>（必填；判定与缺失处理见 `13` §5.2）
 - description: <可选>
 - dependencies: <可选>
 - approval_chain: <可选>
@@ -152,7 +153,7 @@ master: … ── 第1步 ── 第2步 ── 第3步 ── …
 
 ### 6.2 可选（暂不启用）：每任务一分支
 
-若将来出现**并行**任务，可改为每任务一分支 `task/T-YYYYMMDD-NNN`，到达 `build-verified-approved` 时合并回 `master`；此时 `git diff master...task/T-YYYYMMDD-NNN` 即该任务全部改动。
+若将来出现**并行**任务，可改为每任务一分支 `task/T-YYYYMMDD-NNN`，到达**任务终态**（`13` §7.2：`has_code = true` 为 `build-verified-approved`，`has_code = false` 为 `build-reviewed-approved`）时合并回 `master`；此时 `git diff master...task/T-YYYYMMDD-NNN` 即该任务全部改动。
 
 ### 6.3 里程碑标签（可选）
 
@@ -263,4 +264,5 @@ git rev-parse <sha>^{tree}
 | 2026-10-20 | 本文件（`15-version-control-convention.md`） | 补齐 PM 对被点名治理文档的提交权，与 `14-responsibility-boundaries.md` §6.2、`agents/pm.md` §5 例外二对齐 | §10 权限：将 PM 的 git 写入权限拆为「例外一」（任务台账）与「例外二」（用户点名的那一个项目治理文档），后者明确包含写入与 `git add` / `git commit` | 未定（待用户审批） |
 | 2026-10-20 | 本文件（`15-version-control-convention.md`） | Reviewer 角色分配给 VS Code Copilot，其加载入口须纳入版本控制 | §3.1 纳管范围增 `.github/agents/`（VS Code Copilot 的 agent 定义）；§4 状态记录示例的 `Reviewer:xxx` 改为 `Reviewer:copilot` | 未定（待用户审批） |
 | 2026-11-03 | 本文件 §10 PM 行 | T-20261102-001：解除 PM 落盘审批报告的禁令与要求之矛盾 | §10 PM 行落盘范围增列本角色审批报告 `tasks/T-YYYYMMDD-NNN/<阶段>-approval-report.md`；命名对照见 `14` §6.2 | 经用户批准后生效 |
+| 2026-11-04 | 本文件（`15-version-control-convention.md`）§4.2 台账结构模板、§6.2 分支合并点 | T-20261103-001：新增必填字段 `has_code` 须进台账模板；并行分支的合并触发点原写作单一终态，与双终态分支不符 | §4.2 模板增 `- has_code: <true\|false>` 行；§6.2 合并触发点改为「到达任务终态（`13` §7.2 双分支）」 | 经用户批准后生效 |
 

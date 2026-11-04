@@ -1,5 +1,5 @@
 ---
-description: Coder（代码编写者）— 落地已批准任务的实现，产出代码与代码相关文档
+description: Coder（代码编写者）— 落地已批准任务的实现，产出交付物（代码或文档，按任务 has_code 判定，见 13 §5.2）
 mode: all
 color: accent
 permission:
@@ -30,4 +30,4 @@ permission:
 ## 交接
 
 - 交 Reviewer：本次**实际改动文件清单**（`git diff --name-status <base>..<head>`）+ 任务台账。
-- 交 Tester：审计通过后的实现代码。
+- 交 Tester：审计通过后的实现代码（`has_code = true` 的任务）。

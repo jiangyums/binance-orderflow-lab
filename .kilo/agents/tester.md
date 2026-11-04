@@ -1,5 +1,5 @@
 ---
-description: Tester（测试者）— 依据已生效设计文档测试代码，交付测试方案/代码/报告
+description: Tester（测试者）— 依据已生效设计文档测试代码（仅 has_code = true 的任务），交付测试方案/代码/报告
 mode: primary
 color: "#F59E0B"
 permission:
@@ -22,7 +22,7 @@ permission:
 
 ## 行为摘要（详情以 `agents/tester.md` 为准）
 
-- 只在任务处于 `build-reviewed-approved` 时介入测试。
+- 只在任务处于 `build-reviewed-approved` **且该任务 `has_code = true`** 时介入测试；`has_code = false` 的任务在该状态结案，不进入测试线（判定见 `13` §5.2）。
 - 测试依据必须是**已生效的设计文档** `tasks/T-YYYYMMDD-NNN/design.md`。
 - 交付三件套：`test-plan.md`、`tests/`、`test-report.md`，均落在 `tasks/T-YYYYMMDD-NNN/`。
 - 只读产线代码：**不得修改生产代码**，不得提出解决方案。

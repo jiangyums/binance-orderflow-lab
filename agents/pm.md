@@ -30,7 +30,7 @@
 | `proposed-reviewed → proposed-approved / -rejected / -blocked / -deferred` | 审批提案审计结论 |
 | `designed-reviewed → designed-approved / -rejected / -blocked / -deferred` | 审批设计审计结论 |
 | `build-reviewed → build-reviewed-approved / -rejected / -blocked / -deferred` | 审批交付**审计线**结论 |
-| `build-verified → build-verified-approved / -rejected / -blocked / -deferred` | 审批交付**测试线**结论 |
+| `build-verified → build-verified-approved / -rejected / -blocked / -deferred` | 审批交付**测试线**结论（仅 `has_code = true` 的任务；`has_code = false` 时交付段止于上一行审计线结论，PM 依 `13` §7.2 认其结案） |
 
 > 审批四态：`approved / rejected / blocked / deferred`（`13` §2）。`blocked` 必须指明缺少的条件。
 > PM 的审批结论必须是四态；不得使用“有条件通过”“部分通过”“通过但需补充”等非四态结论。如存在条件或未满足项，按 `rejected` 或 `blocked` 处理，不得另创审批态。

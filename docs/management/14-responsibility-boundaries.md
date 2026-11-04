@@ -54,7 +54,7 @@
 
 ### 2.4 Tester（测试者）
 
-- 职责：依据已生效的设计文档对代码进行测试，交付测试结果（对应测试线 `build-reviewed-approved` → `build-verified`）。
+- 职责：依据已生效的设计文档对代码进行测试，交付测试结果（对应测试线 `build-reviewed-approved` → `build-verified`；仅 `has_code = true` 的任务，判定见 `13` §5.2）。
 - 写权限：见 §6.3（只读验证）。
 
 ---
@@ -196,7 +196,7 @@ PM 的审批结论必须使用四态：`approved / rejected / blocked / deferred
 - `Coder` 可以落地已批准任务的交付物，含实现代码与文档（含项目治理文档），且改动不得超出当前任务 `output_contracts` 指定的文件范围；文本与逻辑须由已批准设计确定，不得自行发明。
 - `Coder` 与 `Architect` 均不得将任何文档或任务状态标记为 `approved` 系列（该系列由 PM 依审批结论触发，见 §3 第 2 条）。
 - `Reviewer` 可以在提交审查报告时置位对应审计状态（`proposed-reviewed` / `designed-reviewed` / `build-reviewed`），并追加台账状态记录行；审计报告与台账的 git 提交/推送依 §6.1。
-- `Tester` 可以置位 `build-reviewed-approved → build-verified`，并追加台账状态记录行；不得置位任何 `*-approved` 结论态（见 `13-task-model.md` §2.3）。
+- `Tester` 可以置位 `build-reviewed-approved → build-verified`（仅 `has_code = true` 的任务，判定见 `13` §5.2），并追加台账状态记录行；不得置位任何 `*-approved` 结论态（见 `13-task-model.md` §2.3）。
 - 任何角色均不得修改未经审批的实现 / 生产代码，不得修改任务台账中非本角色应写的行（台账写入规则见 `15-version-control-convention.md` §4.3）。
 
 ### 6.5 开工前置检查与提交同步
@@ -235,6 +235,8 @@ PM 审批测试线结论（build-verified-approved）
   ↓
 终态（build-verified-approved）
 ```
+
+> `has_code = false` 的任务在上图「PM 审批审计线结论（`build-reviewed-approved`）」处即为终态，Tester 与测试线环节不出现（`13` §5.2／§7.2）。
 
 返工分支（状态语义见 `13-task-model.md` §2、§7.3；`*-blocked` / `*-deferred` 的处理见 §3 第 5、6 条）：
 
@@ -320,6 +322,7 @@ PM
 | 2026-10-20 | Reviewer 角色分配：`agents/reviewer.md`、`agents/README.md`、`AGENTS.md`、`.github/agents/reviewer.agent.md`（新增）、`12-multi-agent-roles.md`、`13-task-model.md`、`00-governance-index.md`、`15-version-control-convention.md` | Reviewer 角色此前无工具加载入口（人工指定），无法实际执行审计线；按用户要求将 Reviewer 角色分配给 VS Code Copilot | 新增 VS Code Copilot 的 Reviewer 加载入口 `.github/agents/reviewer.agent.md`（agent 定义，提示词正文指向 `agents/reviewer.md`）；参与者由「未指定」改为 VS Code Copilot（`Reviewer:copilot`）；`00` §6 载体表增 `.github/agents/`；`15` §3.1 纳管范围增 `.github/agents/`；`12` §2 角色表与 §4 映射表、`13` §10/§11 示例中的 `Reviewer:xxx` 统一改为 `Reviewer:copilot` | `agents/*` / `12` / `13` / `00` / `15`：经用户授权修订，生效时间待确认 |
 | 2026-11-03 | `14` §2.1/§6.2、`12` §2/§3.1、`15` §10、`agents/pm.md` §3/§5/§6、`.clinerules/pm-role.md`、`AGENTS.md` §1 | T-20261102-001：消除「PM 须落盘审批报告」与「PM 不得写台账外文件」的硬矛盾 | 审批报告定性为每审批段一份 `tasks/T-YYYYMMDD-NNN/<阶段>-approval-report.md`；PM 落盘范围增列该报告 | 经用户批准后生效 |
 | 2026-11-03 | `13` §6 交付物表、`14` §6.2 | T-20261102-001：戊-2／戊-3／戊-6 落实——交付物表补列审批报告载体，标明 `build-decision.md` 与审批报告的并存关系，并明确审批报告的内容边界 | `13` §6 交付物表四行载体补列 `tasks/T-XXXX/<阶段>-approval-report.md`，表下加四态注；`14` §6.2 增 `build-decision.md` 并存句与审批报告内容边界句；补齐 §6.2 对照表行内代码标记（对齐已批准设计 v1 §3） | 经用户批准后生效 |
+| 2026-11-04 | `13-task-model.md` §2.1／§2.3／§3.1／§3.2／§3.3／§4／§5／§5.2（新增）／§6／§6.1／§6.3／§7.2／§8／§9／附录 A、`12-multi-agent-roles.md` §3.2／§3.4／§3.5、`14-responsibility-boundaries.md` §2.4／§6.4／§7.1、`15-version-control-convention.md` §4.2／§6.2、`AGENTS.md` §2／§2 示例／§4、`agents/architect.md`／`agents/tester.md`／`agents/pm.md`／`agents/coder.md`、`.kilo/agents/tester.md`、`.opencode/agents/coder.md` | T-20261103-001：纯文档类任务在现行状态机下没有合法终态（`13:173` 测试线无条件、`13:392` 单终态），与 `13` §8 治理文档流程相抵 | 新增必填字段 `has_code`（§5 字段表与 §5.2 判定：正面 5 类／负面 4 类／缺省三则，含缺失「不可判」与未登记类型 fail-closed）；确立双终态（§7.2），`has_code = false` 免测试线以 `build-reviewed-approved` 结案；§3.2 进测试线条件化、§3.3 增防绕过禁止句、§6.1 成熟度第 3 级纳入该终态、§5.1 允许 `verifier` 省略；角色手册与加载入口同步条件化 | 经用户批准后生效 |
 
 > 本批修订涉及的治理文件此前**未纳入版本控制**（`docs/management/`、`agents/`、`AGENTS.md` 尚无基线提交），首次纳管后其差异可由 git 追溯；为不依赖 git diff 作为唯一差异依据，逐文件改动见下方「修订明细」。
 

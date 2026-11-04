@@ -42,7 +42,7 @@ deferred 状态时如果没有给出任何说明，那么，下一个任务结�
 
 | 状态 | 含义 | 角色 |
 |---|---|---|
-| `proposed` | 项目提案（需求说明）已提出。提案只回答"是否值得做"，不包含设计/实现方案 | Architect |
+| `proposed` | 项目提案（需求说明）已提出。提案只回答"是否值得做"，不包含设计/实现方案。`has_code` 的声明属**交付范围自陈**，不属本句所排除的设计／实现方案（判定规则见 §5.2） | Architect |
 | `proposed-reviewed` | 项目提案完成审计 | Reviewer |
 | `proposed-approved` | PM 对提案段审计结论的审批完成，结论为通过，可进入设计阶段 | PM |
 | `proposed-blocked` | PM 对提案段审计结论的审批完成，结论为缺少某个条件，条件具备后即可继续。转移到阻塞阶段时必须指明缺少的条件 | PM |
@@ -78,8 +78,8 @@ deferred 状态时如果没有给出任何说明，那么，下一个任务结�
 |---|---|---|
 | `build` | 代码已交付 | Coder |
 | `build-reviewed` | 实现结果完成审计（审计线） | Reviewer |
-| `build-verified` | 实现结果完成测试（测试线，审计批准后进入） | Tester |
-| `build-reviewed-approved` | PM 对交付段审计线结论的审批完成，结论为通过 | PM |
+| `build-verified` | 实现结果完成测试（测试线，审计批准后进入；**仅 `has_code = true` 的任务进入**） | Tester |
+| `build-reviewed-approved` | PM 对交付段审计线结论的审批完成，结论为通过；`has_code = false` 的任务到此即为终态（见 §7.2） | PM |
 | `build-reviewed-blocked` | PM 对交付段审计线结论的审批完成，结论为缺少某个条件，条件具备后即可继续。转移到阻塞阶段时必须指明缺少的条件 | PM |
 | `build-reviewed-rejected` | PM 对交付段审计线结论的审批完成，结论为实现不被接受。返工路径：默认返回 `build`，重新交付实现；若结论为**设计或需求无法满足**，则回退到 `designed` 或 `proposed`（由 Architect 执行） | PM |
 | `build-reviewed-deferred` | PM 对交付段审计线结论的审批完成，结论为延迟处理，仅表示排序或优先级关系 | PM |
@@ -140,8 +140,9 @@ designed-approved
 build
   └── build-reviewed
        └── build-reviewed-approved
-            └── build-verified
-                 └── build-verified-approved
+            ├── build-verified
+            │    └── build-verified-approved          （has_code = true 的终态）
+            └── 任务完成（final）                       （has_code = false 的终态：免测试线）
 ```
 
 ### 3.2 主要允许转移
@@ -161,7 +162,7 @@ build
 | `designed-reviewed` | `designed-deferred` | 设计延迟处理 |
 | `designed-rejected` | `designed` | 需重新修改设计方案并重新进入设计 |
 | `designed-rejected` | `proposed` | 需求无法满足，需回退提案段重新审定需求（**由 Architect 执行**） |
-| `designed-approved` | `build` | 进入交付，代码交付 |
+| `designed-approved` | `build` | 进入交付；交付物形态由 `has_code` 决定（见 §5.2、§6 表 `build` 行） |
 | `build` | `build-reviewed` | 实现结果送交审计 |
 | `build-reviewed` | `build-reviewed-approved` | 审计结论：通过 |
 | `build-reviewed` | `build-reviewed-rejected` | 审计结论：实现不被接受 |
@@ -170,7 +171,7 @@ build
 | `build-reviewed-rejected` | `build` | 需重新交付实现 |
 | `build-reviewed-rejected` | `designed` | 设计方案无法满足，需回退设计段重新审定设计（**由 Architect 执行**） |
 | `build-reviewed-rejected` | `proposed` | 需求无法满足，需回退提案段重新审定需求（**由 Architect 执行**） |
-| `build-reviewed-approved` | `build-verified` | 审计线通过，进入测试阶段 |
+| `build-reviewed-approved` | `build-verified` | 审计线通过，进入测试阶段（**仅 `has_code = true`**；`has_code = false` 无此转移，其终态即本状态） |
 | `build-verified` | `build-verified-approved` | 测试结论：通过 |
 | `build-verified` | `build-verified-rejected` | 测试结论：不通过 |
 | `build-verified` | `build-verified-blocked` | 测试发现阻塞项 |
@@ -200,6 +201,10 @@ designed 不能直接变为 build。
   - build 不能直接进入 build-verified。
   - build-verified 不能直接进入 build-reviewed。
   - 测试线不会反过来回退到审计阶段。
+免测试终态分支不得用于规避测试（判定见 §5.2）：
+  - has_code 字段缺失的任务不得置位 build-reviewed-approved。
+  - has_code = false 且 output_contracts 或实际落地文件命中 §5.2 正面清单任一类的任务，不得置位 build-reviewed-approved：Reviewer 在 build-reviewed 报告中记为 P1，PM 依 §2.3 判 build-reviewed-rejected。
+  - 交付段按实际落地文件复核提案段声明（见 12 §3.5），复核结论与声明不一致时以复核结论为准。
 ```
 
 ### 3.4 恢复转移规则
@@ -273,7 +278,7 @@ PM 根据审计、测试的结论进行审批。
 
 每个任务包含以下字段，分级必填：
 
-- 必填：`task_id`／`title`／`status`／`created_at`／`updated_at`／`revision`／`assignees`／`input_contracts`／`output_contracts`
+- 必填：`task_id`／`title`／`status`／`created_at`／`updated_at`／`revision`／`assignees`／`input_contracts`／`output_contracts`／`has_code`
 - 选填（缺省视为空）：`description`／`dependencies`／`approval_chain`／`risk`
 
 | 字段 | 类型 | 说明 |
@@ -288,6 +293,7 @@ PM 根据审计、测试的结论进行审批。
 | `assignees` | object | 责任人和角色 |
 | `input_contracts` | array | 任务依赖的输入 |
 | `output_contracts` | array | 任务产出 |
+| `has_code` | boolean | 本任务交付物是否含代码；判定规则见 §5.2。由 Architect 在提案段声明并给出依据，交付段由 Reviewer 按 §5.2 复核（见 `12` §3.5） |
 | `dependencies` | array | 依赖的其他任务 ID |
 | `approval_chain` | object | 审批、执行、验证链路 |
 | `risk` | string | 风险和限制 |
@@ -314,6 +320,37 @@ PM 根据审计、测试的结论进行审批。
 | `executor` | 负责落地实现的人 |
 | `verifier` | 负责验证产物的人 |
 
+> `has_code = false` 的任务**可以省略** `verifier` 键；省略不视为字段缺失缺陷，也不表示验证被跳过——该任务的交付验证由交付段审计（Reviewer）与 PM 审批承担（见 §7.2）。含代码的任务仍应写明 `verifier`。
+
+### 5.2 `has_code` 的判定
+
+`has_code` 只由该任务 `output_contracts` 列出的**交付物成员**决定，与任务所属领域、是否顺带修改过既有代码无关。判定按下列两张清单，清单未覆盖的情形按「缺省处理」办。
+
+**正面清单（任一成员命中即 `has_code = true`）**
+
+1. 实现源码：编译器／解释器消费的源文件（本仓库现量：`*.go`、`*.py`；`*.ipynb` 视同源码，因其单元格为可执行代码）；
+2. 测试代码：`*_test.go`、`test_*.py` 及 `tests/` 目录下的可执行测试脚本；
+3. 可执行脚本与运行入口：`*.sh`、`*.ps1`、`*.bat`、`Makefile` 中被直接调用的目标；
+4. 构建与依赖配置（改变构建／安装行为者）：`go.mod`、`go.sum`、`package.json`、`requirements.txt`、`Dockerfile`、`*.ipynb` 的 pipeline 配置；
+5. 生成物与迁移：由生成器产出并作为交付物本体的代码、数据库迁移脚本、被跟踪的二进制产物（如 `*.exe`）。
+
+**负面清单（不据以判 `true`）**
+
+1. 文档类：`*.md`、`*.txt`、`*.pdf`——**含 `.md` 内的代码块与示例代码**，文档内嵌代码不构成代码交付物；
+2. 任务台账与任务产物目录内的报告（`tasks/**/*.md`）；
+3. 纯仓库／编辑器配置（不承载可执行逻辑）：`.gitignore`、`.gitattributes`、`.editorconfig`、`*.ini`、`*.toml`、`*.yaml`；若某份配置承载可执行逻辑（CI 步骤、生成器指令），改按正面清单第 4 类计；
+4. 数据与模型产物（作为数据而非实现交付时）：`*.npz`、`*.csv`、`*.parquet`、`*.log`。
+
+**缺省处理（按序适用，三条）**
+
+1. 成员类型未在上列任一清单登记 ⇒ **fail-closed 取 `true`**（进入测试线），并由 Reviewer 在交付审计报告中记「类型未登记」，供后续治理任务补列清单。
+2. `has_code` 字段缺失 ⇒ 判为**不可判**：不得置位 `build-reviewed-approved`，不得进入任何终态；缺失**不得**读作 `false`，也不得据缺失走免测试分支。
+3. 提案段声明与 `output_contracts`／实际落地文件成员类型冲突 ⇒ **以实际成员类型为准**；提案段声明是义务性自陈，不是最终取值来源，交付段复核可推翻它。
+
+> 规避禁令：若某段代码的用途是进入仓库运行、却只写进 `.md` 代码块，该任务按**正面清单第 1 类**计入 `true`；负面清单第 1 类不保护这种写法。
+
+**追溯**：本字段自本节规则**生效之日**起对新建任务必填。生效日已建台账的任务不溯及补填，其 `has_code` 按缺省处理第 2 则判为「不可判」。
+
 ## 6. 任务产物（交付物）
 
 每个状态对应明确的交付物、生产者与载体。载体路径中的 `T-XXXX` 指具体任务 ID。
@@ -327,16 +364,18 @@ PM 根据审计、测试的结论进行审批。
 | `designed` | 设计方案（实现方案） | Architect | `tasks/T-XXXX/design.md` |
 | `designed-reviewed` | 设计审计报告 | Reviewer | `tasks/T-XXXX/review-design-report.md` |
 | `designed-approved` | 审计结论 | PM | 任务台账；`tasks/T-XXXX/design-approval-report.md` |
-| `build` | 代码 + 代码相关文档 | Coder | 仓库代码文件 + 相关 `docs/` |
+| `build` | 交付物：`has_code = true` 为代码＋代码相关文档；`has_code = false` 为文档类交付物（见 §5.2） | Coder | 仓库代码文件＋相关 `docs/`，或 `docs/`／治理文档文本 |
 | `build-reviewed` | 交付审计报告 | Reviewer | `tasks/T-XXXX/review-build-report.md` |
 | `build-reviewed-approved` | 审计结论 | PM | 任务台账；`tasks/T-XXXX/build-reviewed-approval-report.md` |
-| `build-verified` | 测试验收报告 | Tester | `tasks/T-XXXX/test-plan.md`、`tasks/T-XXXX/tests/`、`tasks/T-XXXX/test-report.md` |
+| `build-verified` | 测试验收报告（仅 `has_code = true` 的任务产出本行交付物） | Tester | `tasks/T-XXXX/test-plan.md`、`tasks/T-XXXX/tests/`、`tasks/T-XXXX/test-report.md` |
 | `build-verified-approved` | 审计结论 | PM | 任务台账；`tasks/T-XXXX/build-verified-approval-report.md` |
 | `build-verified-rejected` | 审计报告 | PM | 任务台账、`tasks/T-XXXX/build-decision.md` |
 | `build-verified-blocked` | 审计报告 | PM | `tasks/T-XXXX/build-decision.md` |
 | `build-verified-deferred` | 审计报告 | PM | `tasks/T-XXXX/build-decision.md` |
 
 > PM 的四态结论（`approved`／`rejected`／`blocked`／`deferred`）均产出审批报告，统一落盘为 `tasks/T-XXXX/<阶段>-approval-report.md`（命名对照见 `14` §6.2）；本表仅列载体主项。
+
+> `has_code = false` 的任务不产出本表的 `build-verified` 行交付物，并以 `build-reviewed-approved` 结案（§7.2）；该任务的交付验证载体是 `build-reviewed` 审计报告与 `build-reviewed-approval-report.md`，**不是**「缺少一份测试报告」。
 
 > 注：本表描述「状态 → 交付物」的对应关系，**不记录成熟度**；各状态的成熟度见 §6.1，其记录载体为任务台账与 Git 提交。
 >
@@ -348,9 +387,9 @@ PM 根据审计、测试的结论进行审批。
 
 | 级 | 成熟度 | 含义 | 达到条件（状态变体） |
 |---|---|---|---|
-| 1 | 供审计稿 | 已提交、进入审计与审批流程 | `proposed`（提案）/`designed`（设计）/`build`（代码交付） |
+| 1 | 供审计稿 | 已提交、进入审计与审批流程 | `proposed`（提案）/`designed`（设计）/`build`（交付） |
 | 2 | 审计稿 | 审计已完成，审计结论已出具 | `proposed-reviewed`／`designed-reviewed`／`build-reviewed` |
-| 3 | 审定稿 | 对审计阶段的审批已完成（文档类） | `proposed-approved`／`designed-approved` |
+| 3 | 审定稿 | 对审计阶段的审批已完成（文档类交付与免测试任务的终态亦在此级） | `proposed-approved`／`designed-approved`／`build-reviewed-approved` |
 | 4 | 测试验收稿 | 测试验收已完成 | `build-verified` |
 | 5 | 最终稿 | 对测试验收的审批已完成，为最终结论 | `build-verified-approved` |
 
@@ -368,8 +407,8 @@ PM 根据审计、测试的结论进行审批。
 
 - Architect 产出一律**直接落盘到最终载体**；在正式化之前的对话讨论阶段（任务尚未置 `proposed`），讨论不落盘任何文件；置 `proposed` 时，文件落盘到 `tasks/T-XXXX/proposal.md`，不经过“状态标注”环节。
 - Reviewer 审计上述全部产物（提案、设计、代码与代码相关文档），产出对应审计报告。
-- Tester 测试代码，产出测试方案、测试代码与测试报告。
-- PM 审批**每一份**审计报告与测试报告；审批结论和状态转移记录在任务台账的状态记录行中。
+- Tester 测试代码，产出测试方案、测试代码与测试报告；仅 `has_code = true` 的任务进入该线（见 §5.2、§7.2）。
+- PM 审批**每一份**审计报告与测试报告（免测试任务无测试报告，其交付段审批对象为审计报告）；审批结论和状态转移记录在任务台账的状态记录行中。
 - 载体路径、提交与追溯约定见 `15-version-control-convention.md`。
 
 ## 7. 任务生命周期
@@ -389,7 +428,12 @@ PM 根据审计、测试的结论进行审批。
 
 ### 7.2 任务终点
 
-任务的终态为 `verified`（即 `build-verified-approved`），到达即表示**任务完成**；**最终验收等同于任务完成**。
+任务有两个终态，由任务台账的 `has_code` 字段决定唯一分支（判定见 §5.2，二者互斥且穷尽）：
+
+- `has_code = true`：终态为 `build-verified-approved`（即旧词汇 `verified`），须走完测试线；**最终验收等同于任务完成**。
+- `has_code = false`：终态为 `build-reviewed-approved`，交付段审计线通过并经 PM 审批后即**任务完成**，不进入 `build-verified`，无测试线产物。
+- `has_code` 缺失或不可判：任务**无终态可取**，停在 `build-reviewed`／`build-reviewed-approved` 之前的可判状态并须先补判定（§5.2 缺省处理第 2 则）。
+- 终态与中间态共用 `build-reviewed-approved` 这一状态值：判定任务是否结束须并读台账 `has_code`，不得仅凭 `status` 判定。
 
 ### 7.3 失败与返工
 
@@ -442,9 +486,13 @@ PM 审批项目治理文档（生效）
 
 ```text
 治理文档文本由 Coder 落盘；未经 PM 审批不生效；PM 不编写治理文档（专职审批）。
+治理文档类任务在状态机中的位置：其 has_code = false，交付段以 build-reviewed-approved 结案（§7.2），不进入测试线。
+本节的「Coder 落盘 → PM 审批（生效）」描述治理文本的**生效环节**，不替代三段审计；生效的用户批准见 14 §9 与 14 §5.1，其与本节的归属差异为既存余量，本变更不重开（见任务设计稿未含项）。
 ```
 
 ## 9. 完整流程示例
+
+以下示例为 `has_code = true` 的任务（走测试线）：
 
 ```text
 Architect:Qoder-A 提出任务 T-YYYYMMDD-NNN（proposed，仅需求说明）
@@ -470,6 +518,26 @@ Tester 测试实现结果（build-verified）
 PM 审批测试线结论（build-verified-approved）
   ↓
   终态（build-verified-approved）
+```
+
+非代码任务（`has_code = false`）在同一主链上于交付段提前结案，不出现 Tester 环节：
+
+```text
+Architect:Qoder-A 提出任务（proposed，声明 has_code = false）
+  ↓
+Reviewer 提案审计（proposed-reviewed）→ PM 审批（proposed-approved）
+  ↓
+Architect:Qoder-A 完成设计（designed）
+  ↓
+Reviewer 设计审计（designed-reviewed）→ PM 审批（designed-approved）
+  ↓
+Coder:opencode 交付文档（build）
+  ↓
+Reviewer 审计实现结果（build-reviewed）
+  ↓
+PM 审批审计线结论（build-reviewed-approved）
+  ↓
+  终态（build-reviewed-approved）
 ```
 
 ## 10. 状态记录格式

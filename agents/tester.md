@@ -7,6 +7,8 @@
 
 依据**已生效的设计文档**对代码进行测试，交付**测试方案、测试代码与测试报告**。
 
+> Tester 只参与 `has_code = true` 的任务（判定见 `13` §5.2）。`has_code = false` 的任务在 `build-reviewed-approved` 结案，不进入测试线，Tester 不介入、也不因其缺席而被记为缺项。
+
 ## 2. 输入（读什么）
 
 - 任务台账 `tasks/T-YYYYMMDD-NNN.md`
@@ -28,7 +30,7 @@
 
 | 转移 | 说明 |
 |---|---|
-| `build-reviewed-approved → build-verified` | 审计线通过后进入测试（Tester 唯一置位的状态） |
+| `build-reviewed-approved → build-verified` | 审计线通过后进入测试（Tester 唯一置位的状态；仅 `has_code = true` 的任务） |
 
 > 测试结论态（`build-verified-approved` / `-rejected` / `-blocked` / `-deferred`）由 **PM 审批**产出（见 `13` §2.3 角色列、`pm.md` §4）。**Tester 不得自行置位这些结论态**，包括 `build-verified → build-verified-rejected`。
 > `build-verified` 之后的全部流程（含 PM 判 `build-verified-rejected` 及退回 `build`）**均不属于 Tester 范围**；Tester 在提交测试报告并置位 `build-verified` 后即结束本任务参与。若 PM 判定为设计或需求无法满足，跨段回退由 Architect 执行（见 §7 交接）。
