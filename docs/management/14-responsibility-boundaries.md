@@ -229,11 +229,11 @@ Reviewer 审计实现结果（build-reviewed）
   ↓
 PM 审批审计线结论（build-reviewed-approved）
   ↓
-Tester 测试实现结果（build-verified）
+Tester 测试实现结果（build-verified）（`has_code = true`）
   ↓
-PM 审批测试线结论（build-verified-approved）
+PM 审批测试线结论（build-verified-approved）（`has_code = true`）
   ↓
-终态（build-verified-approved）
+终态（build-verified-approved）（`has_code = true`）
 ```
 
 > `has_code = false` 的任务在上图「PM 审批审计线结论（`build-reviewed-approved`）」处即为终态，Tester 与测试线环节不出现（`13` §5.2／§7.2）。
@@ -323,6 +323,7 @@ PM
 | 2026-11-03 | `14` §2.1/§6.2、`12` §2/§3.1、`15` §10、`agents/pm.md` §3/§5/§6、`.clinerules/pm-role.md`、`AGENTS.md` §1 | T-20261102-001：消除「PM 须落盘审批报告」与「PM 不得写台账外文件」的硬矛盾 | 审批报告定性为每审批段一份 `tasks/T-YYYYMMDD-NNN/<阶段>-approval-report.md`；PM 落盘范围增列该报告 | 经用户批准后生效 |
 | 2026-11-03 | `13` §6 交付物表、`14` §6.2 | T-20261102-001：戊-2／戊-3／戊-6 落实——交付物表补列审批报告载体，标明 `build-decision.md` 与审批报告的并存关系，并明确审批报告的内容边界 | `13` §6 交付物表四行载体补列 `tasks/T-XXXX/<阶段>-approval-report.md`，表下加四态注；`14` §6.2 增 `build-decision.md` 并存句与审批报告内容边界句；补齐 §6.2 对照表行内代码标记（对齐已批准设计 v1 §3） | 经用户批准后生效 |
 | 2026-11-04 | `13-task-model.md` §2.1／§2.3／§3.1／§3.2／§3.3／§4／§5／§5.2（新增）／§6／§6.1／§6.3／§7.2／§8／§9／附录 A、`12-multi-agent-roles.md` §3.2／§3.4／§3.5、`14-responsibility-boundaries.md` §2.4／§6.4／§7.1、`15-version-control-convention.md` §4.2／§6.2、`AGENTS.md` §2／§2 示例／§4、`agents/architect.md`／`agents/tester.md`／`agents/pm.md`／`agents/coder.md`、`.kilo/agents/tester.md`、`.opencode/agents/coder.md` | T-20261103-001：纯文档类任务在现行状态机下没有合法终态（`13:173` 测试线无条件、`13:392` 单终态），与 `13` §8 治理文档流程相抵 | 新增必填字段 `has_code`（§5 字段表与 §5.2 判定：正面 5 类／负面 4 类／缺省三则，含缺失「不可判」与未登记类型 fail-closed）；确立双终态（§7.2），`has_code = false` 免测试线以 `build-reviewed-approved` 结案；§3.2 进测试线条件化、§3.3 增防绕过禁止句、§6.1 成熟度第 3 级纳入该终态、§5.1 允许 `verifier` 省略；角色手册与加载入口同步条件化 | 经用户批准后生效 |
+| 2026-11-04 | T-20261103-001 返工轮：`13` §2.3／§3.2／§3.3／§3.4／§4／§6／§6.1／§7.3／§9／§10／附录 A、`AGENTS.md` §2 状态图／§2 示例／§4 步骤 4、`14` §7.1 责任传递图、`15` §6.3 里程碑标签、`agents/tester.md` §1／§3／§4／§6 | 交付审计判 `build-reviewed-rejected`：`13` §7.3 主链与常见分支仍无条件导向测试线（J-6 行级失败），附录 A 单终态表述未衔接 §7.2；本行同时使上一行的「修改对象」枚举与实际改动相符 | 生命周期各段的测试线表述统一加 `has_code = true` 前提并补 `has_code = false` 终态分支；附录 A 两行标明旧词汇迁移语境并交叉引用 §7.2；示例行与角色手册操作步骤就地标注适用前提 | 经用户批准后生效 |
 
 > 本批修订涉及的治理文件此前**未纳入版本控制**（`docs/management/`、`agents/`、`AGENTS.md` 尚无基线提交），首次纳管后其差异可由 git 追溯；为不依赖 git diff 作为唯一差异依据，逐文件改动见下方「修订明细」。
 

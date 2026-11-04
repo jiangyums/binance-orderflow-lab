@@ -77,13 +77,13 @@ build-reviewed
   ├── build-reviewed-blocked
   └── build-reviewed-deferred
 
-build-verified
-  ├── build-verified-approved
+build-verified（仅 has_code = true 的任务进入）
+  ├── build-verified-approved（has_code = true）
   ├── build-verified-rejected
   ├── build-verified-blocked
   └── build-verified-deferred
 
-build-verified-approved
+build-verified-approved（has_code = true 的任务终态）
   └── 任务完成（final｜has_code = true）
 
 build-reviewed-approved
@@ -107,8 +107,8 @@ T-20261017-001 designed -> designed-reviewed | 设计审计完成
 T-20261017-001 designed-reviewed -> designed-approved | decision=通过
 T-20261017-001 designed-approved -> build | 构建开始
 T-20261017-001 build -> build-reviewed | 交付审计完成
-T-20261017-001 build-reviewed-approved -> build-verified by Tester:kilo | 测试完成
-T-20261017-001 build-verified -> build-verified-approved | verdict=通过
+T-20261017-001 build-reviewed-approved -> build-verified by Tester:kilo | 测试完成（示例任务 has_code = true）
+T-20261017-001 build-verified -> build-verified-approved | verdict=通过（has_code = true）
 T-20261017-002 build-reviewed -> build-reviewed-approved by PM:Cline | decision=通过；本任务 has_code=false，据此结案（13 §7.2）
 ```
 
@@ -176,7 +176,7 @@ T-20261017-002 build-reviewed -> build-reviewed-approved by PM:Cline | decision=
 1. 架构师提出任务或方案。
 2. Reviewer 依据已生效的文档审查代码和文档，找到问题。
 3. Tester 依据已生效的设计文档测试代码，交付测试结果（仅 `has_code = true` 的任务；`has_code = false` 的任务不经测试线）。
-4. PM 审批 Reviewer 的输出结果；任务走测试线时一并审批 Tester 的输出结果。
+4. PM 审批 Reviewer 的输出结果；仅 `has_code = true` 的任务走测试线并一并审批 Tester 的输出结果（`has_code = false` 免测试线，见 `13` §7.2）。
 5. PM 审批项目治理文档（治理文本由 Coder 落盘）。
 6. 用户审批项目治理文档。
 7. 审批通过后，执行者落地。产物**一律直接落盘到最终载体**，不设草稿专用目录；**产物文件内不得标注状态或 `revision`**，成熟度由任务台账与 Git 提交承载（见 `13-task-model.md` §6.1）。

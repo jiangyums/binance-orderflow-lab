@@ -83,10 +83,10 @@ deferred 状态时如果没有给出任何说明，那么，下一个任务结�
 | `build-reviewed-blocked` | PM 对交付段审计线结论的审批完成，结论为缺少某个条件，条件具备后即可继续。转移到阻塞阶段时必须指明缺少的条件 | PM |
 | `build-reviewed-rejected` | PM 对交付段审计线结论的审批完成，结论为实现不被接受。返工路径：默认返回 `build`，重新交付实现；若结论为**设计或需求无法满足**，则回退到 `designed` 或 `proposed`（由 Architect 执行） | PM |
 | `build-reviewed-deferred` | PM 对交付段审计线结论的审批完成，结论为延迟处理，仅表示排序或优先级关系 | PM |
-| `build-verified-approved` | PM 对交付段测试线结论的审批完成，结论为通过 | PM |
-| `build-verified-blocked` | PM 对交付段测试线结论的审批完成，结论为缺少某个条件，条件具备后即可继续。转移到阻塞阶段时必须指明缺少的条件 | PM |
-| `build-verified-rejected` | PM 对交付段测试线结论的审批完成，结论为不通过。返工路径：默认返回 `build`（**由 Coder 执行**），修复缺陷并重新交付；若结论为**设计或需求无法满足**，则回退到 `designed` 或 `proposed`（由 Architect 执行） | PM |
-| `build-verified-deferred` | PM 对交付段测试线结论的审批完成，结论为延迟处理，仅表示排序或优先级关系 | PM |
+| `build-verified-approved` | PM 对交付段测试线结论的审批完成，结论为通过（本行仅适用于 `has_code = true` 的任务；`has_code = false` 不进入 `build-verified*` 状态，见 §7.2） | PM |
+| `build-verified-blocked` | PM 对交付段测试线结论的审批完成，结论为缺少某个条件，条件具备后即可继续。转移到阻塞阶段时必须指明缺少的条件（本行仅适用于 `has_code = true` 的任务；`has_code = false` 不进入 `build-verified*` 状态，见 §7.2） | PM |
+| `build-verified-rejected` | PM 对交付段测试线结论的审批完成，结论为不通过。返工路径：默认返回 `build`（**由 Coder 执行**），修复缺陷并重新交付；若结论为**设计或需求无法满足**，则回退到 `designed` 或 `proposed`（由 Architect 执行）（本行仅适用于 `has_code = true` 的任务；`has_code = false` 不进入 `build-verified*` 状态，见 §7.2） | PM |
+| `build-verified-deferred` | PM 对交付段测试线结论的审批完成，结论为延迟处理，仅表示排序或优先级关系（本行仅适用于 `has_code = true` 的任务；`has_code = false` 不进入 `build-verified*` 状态，见 §7.2） | PM |
 
 > `in_progress` 状态废止：执行属于隐藏状态，不在文本中展现；交付前任务在书面上保持其门禁通过状态。
 > 所有 `deferred` 状态仅表示排序或优先级关系，不依赖其他任务完成。
@@ -172,7 +172,7 @@ build
 | `build-reviewed-rejected` | `designed` | 设计方案无法满足，需回退设计段重新审定设计（**由 Architect 执行**） |
 | `build-reviewed-rejected` | `proposed` | 需求无法满足，需回退提案段重新审定需求（**由 Architect 执行**） |
 | `build-reviewed-approved` | `build-verified` | 审计线通过，进入测试阶段（**仅 `has_code = true`**；`has_code = false` 无此转移，其终态即本状态） |
-| `build-verified` | `build-verified-approved` | 测试结论：通过 |
+| `build-verified` | `build-verified-approved` | 测试结论：通过（仅 `has_code = true` 的任务有此转移，见 §7.2） |
 | `build-verified` | `build-verified-rejected` | 测试结论：不通过 |
 | `build-verified` | `build-verified-blocked` | 测试发现阻塞项 |
 | `build-verified` | `build-verified-deferred` | 测试延迟处理 |
@@ -197,10 +197,10 @@ designed 不能直接变为 build。
 段间转移不得绕过审计门禁：
   - designed-reviewed 不能直接变为 build。
   - build-reviewed 不能直接变为 build-verified。
-测试线必须在审计线批准后进入：
+测试线必须在审计线批准后进入（仅 has_code = true 的任务有测试线，见 §7.2）：
   - build 不能直接进入 build-verified。
   - build-verified 不能直接进入 build-reviewed。
-  - 测试线不会反过来回退到审计阶段。
+  - 测试线不会反过来回退到审计阶段。（has_code = false 的任务不进入测试线，见 §7.2）
 免测试终态分支不得用于规避测试（判定见 §5.2）：
   - has_code 字段缺失的任务不得置位 build-reviewed-approved。
   - has_code = false 且 output_contracts 或实际落地文件命中 §5.2 正面清单任一类的任务，不得置位 build-reviewed-approved：Reviewer 在 build-reviewed 报告中记为 P1，PM 依 §2.3 判 build-reviewed-rejected。
@@ -237,10 +237,10 @@ designed 不能直接变为 build。
 | `build-reviewed-deferred` | `build-reviewed-blocked` | 延迟处理结束，重新进入批准流程，批准结果是继续阻塞 |
 | `build-verified-blocked` | `build-verified-blocked` | 阻塞条件已消除，重新进入批准流程，批准结果是继续阻塞 |
 | `build-verified-blocked` | `build-verified-deferred` | 阻塞条件已消除，重新进入批准流程，批准结果是延期 |
-| `build-verified-blocked` | `build-verified-approved` | 阻塞条件已消除，重新进入批准流程，批准结果是通过 |
+| `build-verified-blocked` | `build-verified-approved` | 阻塞条件已消除，重新进入批准流程，批准结果是通过（仅 `has_code = true` 的任务有此转移，见 §7.2） |
 | `build-verified-blocked` | `build-verified-rejected` | 阻塞条件已消除，重新进入批准流程，批准结果是不接受 |
 | `build-verified-deferred` | `build-verified-deferred` | 延迟处理结束，重新进入批准流程，批准结果是延期 |
-| `build-verified-deferred` | `build-verified-approved` | 延迟处理结束，重新进入批准流程，批准结果是通过 |
+| `build-verified-deferred` | `build-verified-approved` | 延迟处理结束，重新进入批准流程，批准结果是通过（仅 `has_code = true` 的任务有此转移，见 §7.2） |
 | `build-verified-deferred` | `build-verified-rejected` | 延迟处理结束，重新进入批准流程，批准结果是不接受 |
 | `build-verified-deferred` | `build-verified-blocked` | 延迟处理结束，重新进入批准流程，批准结果是继续阻塞 |
 
@@ -257,7 +257,8 @@ designed 不能直接变为 build。
               designed-rejected → proposed  (需求无法满足，回退提案段；由 Architect 执行)
 
 交付审批（审计线）：build-reviewed → build-reviewed-approved / build-reviewed-rejected / build-reviewed-blocked / build-reviewed-deferred
-交付审批（测试线）：build-verified → build-verified-approved / build-verified-rejected / build-verified-blocked / build-verified-deferred
+交付审批（测试线，仅 has_code = true 的任务）：build-verified → build-verified-approved / build-verified-rejected / build-verified-blocked / build-verified-deferred
+              （has_code = false 的任务无测试线审批：交付审批（审计线）的 approved 即终态，见 §7.2）
 交付被拒后：build-reviewed-rejected → build  (重新交付后重新审计)
               build-reviewed-rejected → designed  (设计无法满足，回退设计段；由 Architect 执行)
               build-reviewed-rejected → proposed  (需求无法满足，回退提案段；由 Architect 执行)
@@ -368,7 +369,7 @@ PM 根据审计、测试的结论进行审批。
 | `build-reviewed` | 交付审计报告 | Reviewer | `tasks/T-XXXX/review-build-report.md` |
 | `build-reviewed-approved` | 审计结论 | PM | 任务台账；`tasks/T-XXXX/build-reviewed-approval-report.md` |
 | `build-verified` | 测试验收报告（仅 `has_code = true` 的任务产出本行交付物） | Tester | `tasks/T-XXXX/test-plan.md`、`tasks/T-XXXX/tests/`、`tasks/T-XXXX/test-report.md` |
-| `build-verified-approved` | 审计结论 | PM | 任务台账；`tasks/T-XXXX/build-verified-approval-report.md` |
+| `build-verified-approved` | 审计结论（仅 `has_code = true` 的任务产出本行交付物，见 §7.2） | PM | 任务台账；`tasks/T-XXXX/build-verified-approval-report.md` |
 | `build-verified-rejected` | 审计报告 | PM | 任务台账、`tasks/T-XXXX/build-decision.md` |
 | `build-verified-blocked` | 审计报告 | PM | `tasks/T-XXXX/build-decision.md` |
 | `build-verified-deferred` | 审计报告 | PM | `tasks/T-XXXX/build-decision.md` |
@@ -390,8 +391,8 @@ PM 根据审计、测试的结论进行审批。
 | 1 | 供审计稿 | 已提交、进入审计与审批流程 | `proposed`（提案）/`designed`（设计）/`build`（交付） |
 | 2 | 审计稿 | 审计已完成，审计结论已出具 | `proposed-reviewed`／`designed-reviewed`／`build-reviewed` |
 | 3 | 审定稿 | 对审计阶段的审批已完成（文档类交付与免测试任务的终态亦在此级） | `proposed-approved`／`designed-approved`／`build-reviewed-approved` |
-| 4 | 测试验收稿 | 测试验收已完成 | `build-verified` |
-| 5 | 最终稿 | 对测试验收的审批已完成，为最终结论 | `build-verified-approved` |
+| 4 | 测试验收稿 | 测试验收已完成 | `build-verified`（仅 `has_code = true`；免测试任务的最终级见第 3 级／§7.2） |
+| 5 | 最终稿 | 对测试验收的审批已完成，为最终结论 | `build-verified-approved`（仅 `has_code = true`；免测试任务的最终级见第 3 级／§7.2） |
 
 > 记录说明：任务台账的 `status:` 行与状态记录行记录当前状态；每一步状态转移对应一次 Git 提交；提交信息与 trailer（`Task-Id`／`Actor`／`State-From`／`State-To`）携带状态移行详情。**产物文件本身不得写入与成熟度相关的状态标注。**
 
@@ -444,8 +445,9 @@ PM 根据审计、测试的结论进行审批。
 ```text
 proposed → proposed-reviewed → proposed-approved → designed
         → designed-reviewed → designed-approved → build
-        → build-reviewed → build-reviewed-approved → build-verified
-        → build-verified-approved
+        → build-reviewed → build-reviewed-approved
+        ├─（has_code = true）→ build-verified → build-verified-approved（测试线终态）
+        └─（has_code = false）→ 免测试线，build-reviewed-approved 即终态（见 §7.2）
 ```
 
 常见分支：
@@ -462,7 +464,8 @@ build-reviewed → build-reviewed-rejected / build-reviewed-blocked / build-revi
 build-reviewed-rejected → build                           （重新交付后重新审计）
 build-reviewed-rejected → designed                       （设计无法满足，回退设计段；由 Architect 执行）
 build-reviewed-rejected → proposed                       （需求无法满足，回退提案段；由 Architect 执行）
-build-reviewed-approved → build-verified                  （审计通过，进入测试阶段）
+build-reviewed-approved → build-verified                  （仅 has_code = true：审计通过，进入测试阶段；见 §5.2／§7.2）
+build-reviewed-approved → 终态                             （has_code = false：免测试线，本状态即任务终态；见 §7.2）
 
 build-verified → build-verified-rejected / build-verified-blocked / build-verified-deferred
 build-verified-rejected → build                          （由 Coder 执行：修复缺陷并重新交付）
@@ -470,7 +473,7 @@ build-verified-rejected → designed                      （设计无法满足�
 build-verified-rejected → proposed                      （需求无法满足，回退提案段；由 Architect 执行）
 ```
 
-> `build-verified` 及其四个结论态由 **PM 审批**产出（见 §2.3 角色列）；Tester 只置位 `build-reviewed-approved → build-verified`。PM 判 `build-verified-rejected` 后的返工**默认由 Coder 执行**（退回 `build`），Tester 不再介入；若结论为设计或需求无法满足，则由 Architect 执行回退（退回 `designed` 或 `proposed`）。
+> `build-verified` 及其四个结论态由 **PM 审批**产出（见 §2.3 角色列），且**仅对 `has_code = true` 的任务存在**；Tester 只置位 `build-reviewed-approved → build-verified`（`has_code = false` 无此转移，见 §5.2／§7.2）。PM 判 `build-verified-rejected` 后的返工**默认由 Coder 执行**（退回 `build`），Tester 不再介入；若结论为设计或需求无法满足，则由 Architect 执行回退（退回 `designed` 或 `proposed`）。
 
 每次状态转移都必须附带一条追加记录。
 
@@ -513,11 +516,11 @@ Reviewer 审计实现结果（build-reviewed）
   ↓
 PM 审批审计线结论（build-reviewed-approved）
   ↓
-Tester 测试实现结果（build-verified）
+Tester 测试实现结果（build-verified）（has_code = true）
   ↓
-PM 审批测试线结论（build-verified-approved）
+PM 审批测试线结论（build-verified-approved）（has_code = true）
   ↓
-  终态（build-verified-approved）
+  终态（build-verified-approved）（has_code = true）
 ```
 
 非代码任务（`has_code = false`）在同一主链上于交付段提前结案，不出现 Tester 环节：
@@ -564,7 +567,7 @@ T-20261017-001 proposed-reviewed -> proposed-approved by PM:Cline | decision=提
 T-20261017-001 designed -> designed-reviewed by Reviewer:copilot | 设计审计完成
 T-20261017-001 designed-reviewed -> designed-approved by PM:Cline | decision=方案通过
 T-20261017-001 build -> build-reviewed by Reviewer:copilot
-T-20261017-001 build-reviewed-approved -> build-verified by Tester:kilo
+T-20261017-001 build-reviewed-approved -> build-verified by Tester:kilo | 测试完成（示例任务 has_code = true）
 ```
 
 角色标签可以是：
@@ -618,7 +621,7 @@ T-20261017-001 designed-reviewed -> designed-blocked by Reviewer:copilot | 审�
 | `reviewed` | `*-reviewed` | 归并至各段 reviewed 状态 |
 | `approved` | `*-approved` | 归并至各段 approved 状态 |
 | `rejected` | `*-rejected` | 归并至各段 rejected 状态 |
-| `completed` | `build-verified-approved` | 全局终态 |
-| `verified` | `build-verified-approved` | 测试通过后进入终态 |
+| `completed` | `build-verified-approved` | **旧状态词汇迁移语境**下的映射（本表整体仅用于历史词汇对照，见本节标题）；新规则的任务终态按 §7.2 双分支，`has_code = false` 的任务终态为 `build-reviewed-approved`，**不得据本行推定单一终态** |
+| `verified` | `build-verified-approved` | 同上：该映射仅适用 `has_code = true`（测试通过后进入终态）；`has_code = false` 见 §7.2 |
 
 历史记录切换点：自本文件生效之日起，新任务采用新状态词汇；历史任务保留原状态词汇，跨系统迁移时按上表映射。

@@ -5,7 +5,7 @@
 
 ## 1. 身份与目标
 
-依据**已生效的设计文档**对代码进行测试，交付**测试方案、测试代码与测试报告**。
+依据**已生效的设计文档**对代码进行测试，交付**测试方案、测试代码与测试报告**（仅 `has_code = true` 的任务；判定见 `13` §5.2，`has_code = false` 在 `build-reviewed-approved` 结案，见 `13` §7.2）。
 
 > Tester 只参与 `has_code = true` 的任务（判定见 `13` §5.2）。`has_code = false` 的任务在 `build-reviewed-approved` 结案，不进入测试线，Tester 不介入、也不因其缺席而被记为缺项。
 
@@ -20,8 +20,8 @@
 
 | 产物 | 载体 |
 |---|---|
-| 测试方案 | `tasks/T-YYYYMMDD-NNN/test-plan.md` |
-| 测试代码 | `tasks/T-YYYYMMDD-NNN/tests/` |
+| 测试方案 | `tasks/T-YYYYMMDD-NNN/test-plan.md`（仅 `has_code = true` 的任务产出） |
+| 测试代码 | `tasks/T-YYYYMMDD-NNN/tests/`（仅 `has_code = true` 的任务产出） |
 | 测试报告 | `tasks/T-YYYYMMDD-NNN/test-report.md` |
 
 > 产物文件**不得在开头标注状态与 `revision`**；成熟度与返工版本由任务台账与 Git 提交承载（见 `13` §6.1、§6.2）。
@@ -32,7 +32,7 @@
 |---|---|
 | `build-reviewed-approved → build-verified` | 审计线通过后进入测试（Tester 唯一置位的状态；仅 `has_code = true` 的任务） |
 
-> 测试结论态（`build-verified-approved` / `-rejected` / `-blocked` / `-deferred`）由 **PM 审批**产出（见 `13` §2.3 角色列、`pm.md` §4）。**Tester 不得自行置位这些结论态**，包括 `build-verified → build-verified-rejected`。
+> 测试结论态（`build-verified-approved` / `-rejected` / `-blocked` / `-deferred`）由 **PM 审批**产出（见 `13` §2.3 角色列、`pm.md` §4）（这些结论态仅对 `has_code = true` 的任务存在，见 `13` §7.2）。**Tester 不得自行置位这些结论态**，包括 `build-verified → build-verified-rejected`。
 > `build-verified` 之后的全部流程（含 PM 判 `build-verified-rejected` 及退回 `build`）**均不属于 Tester 范围**；Tester 在提交测试报告并置位 `build-verified` 后即结束本任务参与。若 PM 判定为设计或需求无法满足，跨段回退由 Architect 执行（见 §7 交接）。
 
 ## 5. 禁止（硬约束）
@@ -46,8 +46,8 @@
 
 0. 开工前置检查（见 `14` §6.5）：核验上一流程段已全部完成、仓库无本角色欠账；有缺口则停止执行后续步骤，先提示用户去完成。
 1. 确认任务处于 `build-reviewed-approved`。
-2. 编写测试方案 → 测试代码 → 运行测试 → 生成测试报告。
-3. 更新任务台账并提交（`build-reviewed-approved -> build-verified`）。
+2. 编写测试方案 → 测试代码 → 运行测试 → 生成测试报告（仅 `has_code = true` 的任务执行本步）。
+3. 更新任务台账并提交（`build-reviewed-approved -> build-verified`）（仅 `has_code = true`；`has_code = false` 无此转移，见 `13` §7.2）。
 4. 提交测试报告供 PM 审批。
 5. 置位 `build-verified` 后结束本任务参与；PM 审批结论（通过 / 不通过 / 阻塞 / 延迟）由 PM 置位，退回 `build` 的返工由 Coder 执行，**Tester 不再介入**。
 

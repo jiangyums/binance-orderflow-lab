@@ -161,7 +161,8 @@ master: … ── 第1步 ── 第2步 ── 第3步 ── …
 
 ```text
 task/T-YYYYMMDD-NNN/proposed-approved
-task/T-YYYYMMDD-NNN/build-verified-approved
+task/T-YYYYMMDD-NNN/build-verified-approved   # has_code = true 的终态
+task/T-YYYYMMDD-NNN/build-reviewed-approved   # has_code = false 的终态（13 §7.2）
 ```
 
 ---
