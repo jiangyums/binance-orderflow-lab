@@ -151,6 +151,7 @@ build
 |---|---|---|
 | `proposed` | `proposed-reviewed` | 提案完成审计 |
 | `proposed-reviewed` | `proposed-approved` | 审计结论：通过 |
+| `proposed-rejected` | `proposed` | 需修改提案后重新提交（重新进入 `proposed` 后须重新经历 `proposed-reviewed`） |
 | `proposed-reviewed` | `proposed-rejected` | 审计结论：提案不被接受 |
 | `proposed-reviewed` | `proposed-blocked` | 审计发现阻塞项 |
 | `proposed-reviewed` | `proposed-deferred` | 提案延迟处理 |
@@ -185,7 +186,7 @@ build
 ### 3.3 禁止转移
 
 ```text
-未列入允许转移表的转移一律禁止。
+未列入允许转移表的转移一律禁止（§13.1 所定义的允许转移全集 `A` 为本禁令的唯一允许范围）。
 proposed 不能直接变为 designed。
 designed 不能直接变为 build。
 无审计结论时，状态不得跳过审计门禁。
