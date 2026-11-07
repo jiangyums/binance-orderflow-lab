@@ -151,7 +151,7 @@ build
 |---|---|---|
 | `proposed` | `proposed-reviewed` | 提案完成审计 |
 | `proposed-reviewed` | `proposed-approved` | 审计结论：通过 |
-| `proposed-reviewed` | `proposed-rejected` | 审计结论：提案不被接受（重新提交到 `proposed` 属同段返工；`proposed-rejected → proposed` 由 §13.1 对 §7.3 箭头式条目的纳入规则进入全集 `A`，非 §2.1 表后说明） |
+| `proposed-reviewed` | `proposed-rejected` | 审计结论：提案不被接受（重新提交到 `proposed` 属同段返工；`proposed-rejected → proposed` 由 §13.1 对 §7.3 箭头式条目的纳入规则进入全集 `A`） |
 | `proposed-reviewed` | `proposed-blocked` | 审计发现阻塞项 |
 | `proposed-reviewed` | `proposed-deferred` | 提案延迟处理 |
 | `proposed-approved` | `designed` | 设计完成，可进入审计（设计过程为隐藏状态） |
