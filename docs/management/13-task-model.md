@@ -151,8 +151,7 @@ build
 |---|---|---|
 | `proposed` | `proposed-reviewed` | 提案完成审计 |
 | `proposed-reviewed` | `proposed-approved` | 审计结论：通过 |
-| `proposed-rejected` | `proposed` | 需修改提案后重新提交（重新进入 `proposed` 后须重新经历 `proposed-reviewed`） |
-| `proposed-reviewed` | `proposed-rejected` | 审计结论：提案不被接受 |
+| `proposed-reviewed` | `proposed-rejected` | 审计结论：提案不被接受（重新提交到 `proposed` 属同段返工，见 §2.1 返工路径；该返工边不经本表入全集，由 §13.1「§2.1 表后说明以 `X → Y` 形式列出」句并入 `A`） |
 | `proposed-reviewed` | `proposed-blocked` | 审计发现阻塞项 |
 | `proposed-reviewed` | `proposed-deferred` | 提案延迟处理 |
 | `proposed-approved` | `designed` | 设计完成，可进入审计（设计过程为隐藏状态） |
@@ -186,7 +185,7 @@ build
 ### 3.3 禁止转移
 
 ```text
-未列入允许转移表的转移一律禁止（§13.1 所定义的允许转移全集 `A` 为本禁令的唯一允许范围）。
+未列入允许转移表的转移一律禁止（§13.1 所定义的允许转移全集 `A` 为本禁令的唯一允许范围；`proposed-rejected` 的返工边即属其内）。
 proposed 不能直接变为 designed。
 designed 不能直接变为 build。
 无审计结论时，状态不得跳过审计门禁。
